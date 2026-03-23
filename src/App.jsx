@@ -289,12 +289,54 @@ const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onD
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(entry?.title || "");
   const [text, setText] = useState(entry?.text || "");
+  const fileInputRef = useRef(null);
 
   // sync if entry changes
   const entryTitle = entry?.title || "";
   const entryText = entry?.text || "";
+  const entryImg = entry?.img || null;
   if (!editing && title !== entryTitle) setTitle(entryTitle);
   if (!editing && text !== entryText) setText(entryText);
+
+  const handleAddImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('请选择图片文件');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result;
+      if (base64 && typeof base64 === 'string') {
+        onUpdate({ ...entry, img: base64 });
+      }
+    };
+    reader.onerror = () => {
+      alert('读取图片失败，请重试');
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  };
+
+  const handleRemoveImage = () => {
+    if (confirm('确定删除图片？')) {
+      onUpdate({ ...entry, img: null });
+    }
+  };
+
+  const isBase64Image = (img) => {
+    return typeof img === 'string' && img.startsWith('data:');
+  };
 
   return (
     <div style={{ flex: 1, padding: "0 14px", display: "flex", flexDirection: "column" }}>
@@ -311,8 +353,35 @@ const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onD
             <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: C.dark, margin: 0 }}>{entry.title}</h3>
           )}
           {entry.img && (
-            <div style={{ width: "100%", height: 140, borderRadius: 8, overflow: "hidden", background: `linear-gradient(135deg, ${C.warm}, ${C.cream})`, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(0,0,0,0.06)" }}>
-              <div style={{ fontSize: 48 }}>{entry.img}</div>
+            <div style={{ width: "100%", height: 140, borderRadius: 8, overflow: "hidden", background: `linear-gradient(135deg, ${C.warm}, ${C.cream})`, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(0,0,0,0.06)", position: "relative" }}>
+              {isBase64Image(entry.img) ? (
+                <img src={entry.img} alt="日记图片" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <div style={{ fontSize: 48 }}>{entry.img}</div>
+              )}
+              <button
+                onClick={handleRemoveImage}
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  border: "none",
+                  background: "rgba(0,0,0,0.5)",
+                  color: "#fff",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 18,
+                  lineHeight: 1
+                }}
+                title="删除图片"
+              >
+                ×
+              </button>
             </div>
           )}
           {editing ? (
@@ -328,9 +397,16 @@ const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onD
               <button onClick={() => setEditing(true)} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke={C.brown} strokeWidth="2"/></svg>编辑
               </button>
-              <button style={{ padding: "10px 16px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <button onClick={handleAddImageClick} style={{ padding: "10px 16px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke={C.brown} strokeWidth="2"/><path d="M12 8v8M8 12h8" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>添加图片
               </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                onChange={handleFileChange}
+                style={{ display: "none" }}
+              />
               {onDelete && <button onClick={() => { if (confirm("确定删除这篇日记？")) { onDelete(); onBack(); } }} style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="#A03030" strokeWidth="1.8" strokeLinecap="round"/></svg>删除
               </button>}
