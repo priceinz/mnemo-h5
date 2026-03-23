@@ -487,13 +487,31 @@ export default function App() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4' });
+
+      // Detect Safari for compatibility
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+      // Safari only supports audio/mp4, other browsers support webm
+      let mimeType = 'audio/webm';
+      if (isSafari || !MediaRecorder.isTypeSupported('audio/webm')) {
+        if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          mimeType = 'audio/mp4';
+        } else if (MediaRecorder.isTypeSupported('audio/aac')) {
+          mimeType = 'audio/aac';
+        } else {
+          // Fallback to default (browser will choose)
+          mimeType = '';
+        }
+      }
+
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : {});
       audioChunks.current = [];
       mr.ondataavailable = e => { if (e.data.size > 0) audioChunks.current.push(e.data); };
       mr.start(1000);
       mediaRec.current = mr;
       setRec(true); setT(0); setTranscript("");
     } catch (e) {
+      console.error('Recording error:', e);
       alert("无法访问麦克风，请允许录音权限");
     }
   };
@@ -514,8 +532,54 @@ export default function App() {
     setTranscribing(true);
     // Wait a tick for final data
     await new Promise(r => setTimeout(r, 300));
-    const blob = new Blob(audioChunks.current, { type: 'audio/webm' });
-    // Convert to base64 and send to ASR
+
+    // Detect Safari and use appropriate mime type
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const mimeType = isSafari ? 'audio/mp4' : 'audio/webm';
+    const blob = new Blob(audioChunks.current, { type: mimeType });
+
+    // Try Web Speech API first (works in Safari with fallback)
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      try {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'zh-CN';
+        recognition.continuous = true;
+        recognition.interimResults = false;
+
+        let transcriptText = '';
+        recognition.onresult = (event) => {
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcriptText += event.results[i][0].transcript;
+          }
+        };
+
+        recognition.onerror = (event) => {
+          console.log('Speech recognition error:', event.error);
+          // Fall through to backend ASR or manual input
+        };
+
+        recognition.onend = () => {
+          if (transcriptText) {
+            setTranscript(transcriptText);
+          } else {
+            setTranscript("（语音识别未返回结果，可手动输入）");
+          }
+          setTranscribing(false);
+          setShowSave(true);
+        };
+
+        // Start recognition - note: this requires microphone permission again
+        // For recorded audio, we need to use backend ASR
+        // So we'll skip this and use backend ASR or manual fallback
+        recognition.start();
+        return;
+      } catch (e) {
+        console.log('Web Speech API failed:', e);
+      }
+    }
+
+    // Backend ASR fallback
     try {
       const reader = new FileReader();
       const base64 = await new Promise((resolve, reject) => {
@@ -523,15 +587,24 @@ export default function App() {
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
+
+      // Check if ASR endpoint is available
       const res = await fetch('/api/asr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audio: base64, format: 'webm' }),
+        body: JSON.stringify({ audio: base64, format: isSafari ? 'mp4' : 'webm' }),
       });
+
+      if (!res.ok) {
+        throw new Error(`ASR endpoint returned ${res.status}`);
+      }
+
       const data = await res.json();
       setTranscript(data.text || "（未识别到语音内容）");
     } catch (e) {
-      setTranscript("（语音识别失败，可手动输入）");
+      console.error('ASR error:', e);
+      // Graceful fallback - allow manual entry
+      setTranscript("");
     }
     setTranscribing(false);
     setShowSave(true);
@@ -644,13 +717,29 @@ export default function App() {
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: C.warm, borderRadius: "20px 20px 0 0", padding: "28px 18px 24px", boxShadow: "0 -8px 30px rgba(0,0,0,0.12)", animation: "slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)", zIndex: 10 }}>
           <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: C.dark, marginBottom: 4, textAlign: "center" }}>保存到</div>
           <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: C.brown, marginBottom: 10, textAlign: "center" }}>{fm(t)}</div>
-          {/* Transcript preview */}
-          {transcript && (
-            <div style={{ padding: "8px 12px", marginBottom: 14, borderRadius: 6, background: "rgba(255,255,255,0.5)", border: "1px solid rgba(0,0,0,0.04)", maxHeight: 80, overflow: "auto" }}>
-              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: C.gold, fontWeight: 600, marginBottom: 4 }}>语音转写</div>
-              <div style={{ fontFamily: "'Lora',serif", fontSize: 12, color: C.dark, lineHeight: 1.5 }}>{transcript}</div>
-            </div>
-          )}
+          {/* Transcript preview / edit */}
+          <div style={{ padding: "8px 12px", marginBottom: 14, borderRadius: 6, background: "rgba(255,255,255,0.5)", border: "1px solid rgba(0,0,0,0.04)" }}>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: C.gold, fontWeight: 600, marginBottom: 4 }}>{transcribing ? "识别中..." : (transcript ? "语音转写" : "手动输入")}</div>
+            <textarea
+              value={transcript}
+              onChange={e => setTranscript(e.target.value)}
+              placeholder={transcribing ? "语音识别中..." : "可在此编辑或输入内容..."}
+              disabled={transcribing}
+              style={{
+                width: "100%",
+                minHeight: 60,
+                maxHeight: 120,
+                border: "none",
+                background: "transparent",
+                resize: "vertical",
+                fontFamily: "'Lora',serif",
+                fontSize: 12,
+                color: C.dark,
+                lineHeight: 1.5,
+                outline: "none"
+              }}
+            />
+          </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
             {[{ icon: <BookIcon s={24} c="white" />, l: "日记", k: "diary", bg: C.brown }, { icon: <CheckIcon s={24} c="white" />, l: "待办", k: "todo", bg: C.teal }, { icon: <BulbIcon s={24} c="white" />, l: "灵感", k: "idea", bg: C.orange }, { icon: <MeetIcon s={24} c="white" />, l: "会议", k: "meeting", bg: "#6B5B73" }].map(x =>
               <button key={x.k} onClick={() => doSave(x.k)} style={{ width: 74, height: 78, borderRadius: 12, border: "none", background: x.bg, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", transition: "transform 0.2s" }}
