@@ -112,7 +112,7 @@ const TP22Bar = ({ activeTab, onTab }) => {
 /* ================================================================
    REALISTIC CASSETTE TAPE — translucent case, visible reels, label
    ================================================================ */
-const CassetteTape = ({ month, yearLabel, color, onClick }) => {
+const CassetteTape = ({ month, yearLabel, color, onClick, coverImg, onDoubleClick }) => {
   const cases = {
     clear: { body: "linear-gradient(175deg, rgba(235,230,220,0.9), rgba(210,205,195,0.9))", shadow: "rgba(0,0,0,0.06)", reel: "rgba(0,0,0,0.08)", window: "rgba(0,0,0,0.04)", labelBg: "#FFFBF2", edge: "rgba(255,255,255,0.5)" },
     smoke: { body: "linear-gradient(175deg, rgba(120,115,108,0.88), rgba(85,82,76,0.9))", shadow: "rgba(0,0,0,0.12)", reel: "rgba(255,255,255,0.06)", window: "rgba(0,0,0,0.1)", labelBg: "#F0ECE4", edge: "rgba(255,255,255,0.12)" },
@@ -122,8 +122,14 @@ const CassetteTape = ({ month, yearLabel, color, onClick }) => {
   };
   const tc = cases[color] || cases.clear;
   const rb = tc.reel === "rgba(255,255,255,0.06)" ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)";
+  const lastTap = useRef(0);
+  const handleClick = (e) => {
+    const now = Date.now();
+    if (now - lastTap.current < 350) { e.stopPropagation(); onDoubleClick?.(); lastTap.current = 0; }
+    else { lastTap.current = now; setTimeout(() => { if (lastTap.current !== 0) { onClick?.(); lastTap.current = 0; } }, 360); }
+  };
   return (
-    <button onClick={onClick} style={{ width: 72, height: 110, borderRadius: 3, padding: 0, background: tc.body, border: "none", cursor: "pointer", flexShrink: 0, position: "relative", overflow: "hidden", boxShadow: `2px 3px 10px ${tc.shadow}, inset 0 1px 0 ${tc.edge}`, transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s" }}
+    <button onClick={handleClick} style={{ width: 72, height: 110, borderRadius: 3, padding: 0, background: tc.body, border: "none", cursor: "pointer", flexShrink: 0, position: "relative", overflow: "hidden", boxShadow: `2px 3px 10px ${tc.shadow}, inset 0 1px 0 ${tc.edge}`, transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s" }}
       onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-16px) rotate(-1.5deg)"; e.currentTarget.style.boxShadow = "4px 8px 20px rgba(0,0,0,0.18)"; }}
       onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0) rotate(0deg)"; e.currentTarget.style.boxShadow = `2px 3px 10px ${tc.shadow}, inset 0 1px 0 ${tc.edge}`; }}>
       <div style={{ position: "absolute", left: 0, top: 4, bottom: 4, width: 1.5, background: tc.edge, borderRadius: 1 }} />
@@ -132,12 +138,19 @@ const CassetteTape = ({ month, yearLabel, color, onClick }) => {
         <div style={{ width: 16, height: 16, borderRadius: "50%", border: `1.5px solid ${rb}`, position: "relative" }}><div style={{ position: "absolute", inset: 4, borderRadius: "50%", background: tc.reel }} /></div>
         <div style={{ position: "absolute", top: "50%", left: 16, right: 16, height: 1, background: tc.reel }} />
       </div>
-      <div style={{ position: "absolute", top: 40, left: 8, right: 8, bottom: 18, background: tc.labelBg, borderRadius: 2, boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ position: "absolute", top: 10, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
-        <div style={{ position: "absolute", top: 20, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
-        <div style={{ position: "absolute", top: 30, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
-        <span style={{ fontFamily: "'Caveat',cursive", fontSize: 12, color: C.brown, lineHeight: 1, marginBottom: 1 }}>{month}</span>
-        <span style={{ fontFamily: "'Caveat',cursive", fontSize: 22, fontWeight: 600, color: C.dark, lineHeight: 1 }}>{yearLabel}</span>
+      {/* Label area — custom image or default text */}
+      <div style={{ position: "absolute", top: 40, left: 8, right: 8, bottom: 18, borderRadius: 2, overflow: "hidden", boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.06)" }}>
+        {coverImg ? (
+          <img src={coverImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <div style={{ width: "100%", height: "100%", background: tc.labelBg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
+            <div style={{ position: "absolute", top: 10, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
+            <div style={{ position: "absolute", top: 20, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
+            <div style={{ position: "absolute", top: 30, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
+            <span style={{ fontFamily: "'Caveat',cursive", fontSize: 12, color: C.brown, lineHeight: 1, marginBottom: 1 }}>{month}</span>
+            <span style={{ fontFamily: "'Caveat',cursive", fontSize: 22, fontWeight: 600, color: C.dark, lineHeight: 1 }}>{yearLabel}</span>
+          </div>
+        )}
       </div>
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 8, background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.06))", borderRadius: "0 0 3px 3px" }} />
       <div style={{ position: "absolute", top: 5, left: 5, width: 3, height: 3, borderRadius: "50%", background: "rgba(0,0,0,0.06)" }} />
@@ -145,10 +158,18 @@ const CassetteTape = ({ month, yearLabel, color, onClick }) => {
     </button>
   );
 };
-const ShelfRow = ({ year, tapes, onTap }) => (
+const ShelfRow = ({ year, tapes, onTap, tapCovers, onDoubleTap }) => (
   <div style={{ marginBottom: 12 }}>
     <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: C.brown, letterSpacing: "0.2em", marginBottom: 4, paddingLeft: 8 }}>— {year} —</div>
-    <div style={{ display: "flex", gap: 6, padding: "8px 8px 0", alignItems: "flex-end", overflowX: "auto" }}>{tapes.map((t, i) => <CassetteTape key={i} month={t.month} yearLabel={t.label} color={t.color} onClick={() => onTap(t)} />)}</div>
+    <div style={{ display: "flex", gap: 6, padding: "8px 8px 0", alignItems: "flex-end", overflowX: "auto" }}>{tapes.map((t, i) => {
+      const key = `${year}-${t.month}`;
+      const cover = tapCovers?.[key];
+      return <CassetteTape key={i} month={t.month} yearLabel={t.label} color={t.color}
+        coverImg={cover?.img || cover?.drawing}
+        onClick={() => onTap(t)}
+        onDoubleClick={() => onDoubleTap?.({ year, month: t.month, label: t.label, color: t.color, key })}
+      />;
+    })}</div>
     <div style={{ position: "relative" }}>
       <div style={{ height: 10, borderRadius: "0 0 4px 4px", background: `linear-gradient(180deg, #A07850, ${C.wood}, ${C.woodDk})`, boxShadow: "0 4px 10px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.1)" }} />
       <div style={{ position: "absolute", left: 14, top: 10, width: 4, height: 12, background: "linear-gradient(180deg, #C0B8A8, #A09888)", borderRadius: "0 0 2px 2px", boxShadow: "1px 1px 2px rgba(0,0,0,0.12)" }} />
@@ -158,8 +179,143 @@ const ShelfRow = ({ year, tapes, onTap }) => (
 );
 
 /* ================================================================
-   ICONS
+   TAPE COVER MODAL — fullscreen view + image upload + hand drawing
    ================================================================ */
+const TapeCoverModal = ({ tapeInfo, coverImg, drawingImg, onClose, onSetCover, onSaveDrawing }) => {
+  const canvasRef = useRef(null);
+  const [drawing, setDrawing] = useState(false);
+  const [drawMode, setDrawMode] = useState(false);
+  const [brushColor, setBrushColor] = useState("#261201");
+  const [brushSize, setBrushSize] = useState(3);
+  const isDown = useRef(false);
+  const lastPos = useRef(null);
+  const fileRef = useRef(null);
+
+  // Init canvas with existing drawing
+  useEffect(() => {
+    if (!drawMode) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = 300; canvas.height = 400;
+    ctx.fillStyle = 'transparent';
+    ctx.clearRect(0, 0, 300, 400);
+    if (drawingImg) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0, 300, 400);
+      img.src = drawingImg;
+    }
+  }, [drawMode, drawingImg]);
+
+  const getPos = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches?.[0] || e;
+    return { x: (touch.clientX - rect.left) * (300 / rect.width), y: (touch.clientY - rect.top) * (400 / rect.height) };
+  };
+
+  const startDraw = (e) => { e.preventDefault(); isDown.current = true; lastPos.current = getPos(e); };
+  const moveDraw = (e) => {
+    e.preventDefault();
+    if (!isDown.current) return;
+    const ctx = canvasRef.current.getContext('2d');
+    const pos = getPos(e);
+    ctx.strokeStyle = brushColor;
+    ctx.lineWidth = brushSize;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lastPos.current.x, lastPos.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    lastPos.current = pos;
+  };
+  const endDraw = () => { isDown.current = false; lastPos.current = null; };
+  const clearCanvas = () => { const ctx = canvasRef.current?.getContext('2d'); if (ctx) ctx.clearRect(0, 0, 300, 400); };
+  const saveCanvas = () => { const data = canvasRef.current?.toDataURL('image/png'); if (data) onSaveDrawing(data); setDrawMode(false); };
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => onSetCover(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const colors = ["#261201", "#736356", "#C8A060", "#D4722A", "#2B6E6E", "#8B8C6A", "#9A1C1C", "#1a1a6e", "#fff"];
+
+  if (!tapeInfo) return null;
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", animation: "fadeIn 0.2s" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ width: 300, background: C.warm, borderRadius: 16, padding: 20, position: "relative", maxHeight: "90vh", overflow: "auto" }}>
+        {/* Close */}
+        <button onClick={onClose} style={{ position: "absolute", top: 10, right: 10, background: "rgba(0,0,0,0.06)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>
+        </button>
+
+        {/* Title */}
+        <div style={{ textAlign: "center", marginBottom: 14 }}>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 700, color: C.dark }}>{tapeInfo.month}</div>
+          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: C.brown }}>{tapeInfo.year} · {tapeInfo.label}</div>
+        </div>
+
+        {/* Cover area */}
+        <div style={{ position: "relative", width: "100%", height: 400, borderRadius: 8, overflow: "hidden", background: C.cream, border: "1px solid rgba(0,0,0,0.06)", marginBottom: 14 }}>
+          {coverImg && <img src={coverImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />}
+          {drawingImg && !drawMode && <img src={drawingImg} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", position: "absolute", inset: 0, pointerEvents: "none" }} />}
+          {!coverImg && !drawingImg && !drawMode && (
+            <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <div style={{ fontFamily: "'Caveat',cursive", fontSize: 32, color: C.lbrown }}>{tapeInfo.month}</div>
+              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: C.lbrown }}>双击磁带进入自定义</div>
+            </div>
+          )}
+          {/* Drawing canvas overlay */}
+          {drawMode && (
+            <canvas ref={canvasRef} width={300} height={400}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", touchAction: "none", cursor: "crosshair" }}
+              onMouseDown={startDraw} onMouseMove={moveDraw} onMouseUp={endDraw} onMouseLeave={endDraw}
+              onTouchStart={startDraw} onTouchMove={moveDraw} onTouchEnd={endDraw} />
+          )}
+        </div>
+
+        {/* Draw mode toolbar */}
+        {drawMode ? (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+              {colors.map(c => (
+                <button key={c} onClick={() => setBrushColor(c)} style={{
+                  width: 24, height: 24, borderRadius: "50%", border: brushColor === c ? `2px solid ${C.gold}` : "2px solid transparent",
+                  background: c, cursor: "pointer", boxShadow: c === "#fff" ? "inset 0 0 0 1px rgba(0,0,0,0.15)" : "none",
+                }} />
+              ))}
+              <input type="range" min="1" max="12" value={brushSize} onChange={e => setBrushSize(Number(e.target.value))}
+                style={{ width: 60, marginLeft: 6 }} />
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={saveCanvas} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>保存手绘</button>
+              <button onClick={clearCanvas} style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>清除</button>
+              <button onClick={() => setDrawMode(false)} style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>取消</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => fileRef.current?.click()} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#fff" strokeWidth="2"/><path d="M12 8v8M8 12h8" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
+              选择封面图
+            </button>
+            <button onClick={() => setDrawMode(true)} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.teal, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke="#fff" strokeWidth="2"/></svg>
+              手绘涂鸦
+            </button>
+            {coverImg && <button onClick={() => onSetCover(null)} style={{ padding: "10px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>移除</button>}
+          </div>
+        )}
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
+      </div>
+    </div>
+  );
+};
 const BookIcon = ({ s = 22, c = C.dark }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><path d="M4 4h4l4 2 4-2h4v16h-4l-4 2-4-2H4V4z" stroke={c} strokeWidth="1.8" /><line x1="12" y1="6" x2="12" y2="22" stroke={c} strokeWidth="1.5" /></svg>;
 const CheckIcon = ({ s = 22, c = C.dark }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke={c} strokeWidth="1.8" /><path d="M8 12l3 3 5-5" stroke={c} strokeWidth="2" /></svg>;
 const BulbIcon = ({ s = 22, c = C.dark }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><path d="M9 21h6M12 3a6 6 0 00-3.5 10.9V17h7v-3.1A6 6 0 0012 3z" stroke={c} strokeWidth="1.8" /></svg>;
@@ -477,6 +633,8 @@ export default function App() {
   const [allIdeas, setAllIdeas] = useState(() => lsGet('mnemo_ideas', sampleIdeas));
   const [meetings, setMeetings] = useState(() => lsGet('mnemo_meetings', sampleMeetings));
   const [trash, setTrash] = useState(() => lsGet('mnemo_trash', []));
+  const [tapCovers, setTapCovers] = useState(() => lsGet('mnemo_tape_covers', {})); // { "2026-三月": { img: "data:...", drawing: "data:..." } }
+  const [tapeModal, setTapeModal] = useState(null); // { year, month, label, color, key }
 
   // === Auto-save to localStorage on any change ===
   useEffect(() => { lsSet('mnemo_diary', diaryEntries); }, [diaryEntries]);
@@ -484,6 +642,7 @@ export default function App() {
   useEffect(() => { lsSet('mnemo_ideas', allIdeas); }, [allIdeas]);
   useEffect(() => { lsSet('mnemo_meetings', meetings); }, [meetings]);
   useEffect(() => { lsSet('mnemo_trash', trash); }, [trash]);
+  useEffect(() => { lsSet('mnemo_tape_covers', tapCovers); }, [tapCovers]);
 
   // === Recycle bin: auto-cleanup items older than 30 days ===
   useEffect(() => {
@@ -923,7 +1082,19 @@ export default function App() {
           <div style={{ width: 40 }} />
         </div>
         {filtered.length === 0 && q && <div style={{ textAlign: "center", padding: 30, fontFamily: "'Lora',serif", fontSize: 14, color: C.lbrown }}>没有找到相关日记</div>}
-        {filtered.map((s, i) => <ShelfRow key={i} year={s.y} tapes={s.t} onTap={x => { setDv("month"); setSm({ year: s.y, month: x.month }); }} />)}
+        {filtered.map((s, i) => <ShelfRow key={i} year={s.y} tapes={s.t} tapCovers={tapCovers}
+          onTap={x => { setDv("month"); setSm({ year: s.y, month: x.month }); }}
+          onDoubleTap={info => setTapeModal(info)}
+        />)}
+        {/* Tape cover modal */}
+        {tapeModal && <TapeCoverModal
+          tapeInfo={tapeModal}
+          coverImg={tapCovers[tapeModal.key]?.img}
+          drawingImg={tapCovers[tapeModal.key]?.drawing}
+          onClose={() => setTapeModal(null)}
+          onSetCover={(img) => setTapCovers(prev => ({ ...prev, [tapeModal.key]: { ...(prev[tapeModal.key] || {}), img } }))}
+          onSaveDrawing={(drawing) => setTapCovers(prev => ({ ...prev, [tapeModal.key]: { ...(prev[tapeModal.key] || {}), drawing } }))}
+        />}
       </div>;
     }
 
@@ -1328,6 +1499,7 @@ export default function App() {
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&family=Caveat:wght@400;600&family=Marcellus&display=swap');
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.12}}
         @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
         *{-webkit-font-smoothing:antialiased;box-sizing:border-box}
         ::-webkit-scrollbar{display:none}
       `}</style>
