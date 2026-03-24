@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { COVER_TEMPLATES } from "./coverTemplates";
 
 const C = {
   bg: "#F0E2CB",
@@ -130,25 +131,40 @@ const CassetteTape = ({ month, yearLabel, color, onClick, coverImg, onDoubleClic
     else { lastTap.current = now; setTimeout(() => { if (lastTap.current !== 0) { onClick?.(); lastTap.current = 0; } }, 360); }
   };
 
-  // === BOOK MODE — full cover image, spine, page edges ===
+  // === WAX SEAL BOOK MODE — leather cover + wax seal + twine ===
   if (isBook) return (
-    <button onClick={handleClick} style={{ width: 72, height: 110, padding: 0, border: "none", cursor: "pointer", flexShrink: 0, position: "relative", borderRadius: "2px 5px 5px 2px", overflow: "hidden", boxShadow: "3px 3px 12px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.1)", transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s", background: "#ddd" }}
-      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-16px) rotate(-1.5deg)"; e.currentTarget.style.boxShadow = "5px 10px 25px rgba(0,0,0,0.25)"; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0) rotate(0deg)"; e.currentTarget.style.boxShadow = "3px 3px 12px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.1)"; }}>
-      {/* Cover image */}
+    <button onClick={handleClick} style={{ width: 72, height: 110, padding: 0, border: "none", cursor: "pointer", flexShrink: 0, position: "relative", borderRadius: "2px 5px 5px 2px", overflow: "hidden", boxShadow: "3px 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.05)", transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s" }}
+      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-16px) rotate(-1.5deg)"; e.currentTarget.style.boxShadow = "5px 12px 28px rgba(0,0,0,0.3)"; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0) rotate(0deg)"; e.currentTarget.style.boxShadow = "3px 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.05)"; }}>
+      {/* Cover image as background */}
       <img src={coverImg} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-      {/* Book spine — left edge 3D effect */}
-      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 6, background: "linear-gradient(90deg, rgba(0,0,0,0.25), rgba(0,0,0,0.08), rgba(255,255,255,0.1))", zIndex: 2 }} />
+      {/* Leather texture overlay */}
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.06) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(0,0,0,0.08) 0%, transparent 50%)", zIndex: 1, pointerEvents: "none" }} />
+      {/* Book spine — embossed left edge */}
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 7, zIndex: 3, background: "linear-gradient(90deg, rgba(0,0,0,0.35), rgba(0,0,0,0.12) 40%, rgba(255,255,255,0.06) 70%, rgba(0,0,0,0.08))" }} />
       {/* Page edges — right side */}
-      <div style={{ position: "absolute", right: 0, top: 3, bottom: 3, width: 3, background: "repeating-linear-gradient(180deg, #f5f0e8 0px, #f5f0e8 1px, #e8e2d8 1px, #e8e2d8 2px)", borderRadius: "0 2px 2px 0", zIndex: 2 }} />
-      {/* Top/bottom page edge hint */}
-      <div style={{ position: "absolute", bottom: 0, left: 6, right: 3, height: 2, background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.15))", zIndex: 2 }} />
-      {/* Month label overlay */}
-      <div style={{ position: "absolute", bottom: 6, left: 8, right: 5, zIndex: 3, textAlign: "center" }}>
-        <span style={{ fontFamily: "'Caveat',cursive", fontSize: 10, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3)", fontWeight: 600 }}>{month}</span>
+      <div style={{ position: "absolute", right: 0, top: 4, bottom: 4, width: 3, zIndex: 3, background: "repeating-linear-gradient(180deg, #F0E8DA 0px, #F0E8DA 1px, #E0D8C8 1px, #E0D8C8 2px)", borderRadius: "0 2px 2px 0" }} />
+      {/* Twine — diagonal string across cover */}
+      <div style={{ position: "absolute", top: -2, left: 28, width: 1.5, height: 160, background: "linear-gradient(180deg, #8B7355, #A08868, #8B7355)", transform: "rotate(25deg)", transformOrigin: "top center", zIndex: 4, opacity: 0.7 }} />
+      <div style={{ position: "absolute", top: -2, left: 30, width: 1, height: 160, background: "rgba(255,255,255,0.15)", transform: "rotate(25deg)", transformOrigin: "top center", zIndex: 4 }} />
+      {/* Wax seal — centered */}
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 5, width: 34, height: 34, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {/* Outer seal ring — irregular edge */}
+        <div style={{ position: "absolute", inset: -3, borderRadius: "50%", background: "radial-gradient(circle at 40% 35%, #C43030, #9A1818 50%, #6A0E0E)", boxShadow: "0 2px 6px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.15), inset 0 -1px 2px rgba(0,0,0,0.3)" }}>
+          {/* Seal edge bumps — simulated with box-shadow */}
+          <div style={{ position: "absolute", inset: 0, borderRadius: "50%", boxShadow: "-2px 0 0 0 #A01818, 2px 0 0 0 #A01818, 0 -2px 0 0 #B02020, 0 2px 0 0 #A01818, -1px -2px 0 0 #B82525, 2px 1px 0 0 #901515, -2px 1px 0 0 #901515, 1px -2px 0 0 #B82525" }} />
+        </div>
+        {/* Inner seal — embossed letter/month */}
+        <div style={{ position: "relative", zIndex: 1, width: 26, height: 26, borderRadius: "50%", background: "radial-gradient(circle at 38% 35%, #D43838, #B02020 60%, #8A1515)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 1px 3px rgba(255,255,255,0.2), inset 0 -1px 2px rgba(0,0,0,0.3)" }}>
+          <span style={{ fontFamily: "Georgia, serif", fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.85)", textShadow: "0 -1px 1px rgba(0,0,0,0.3), 0 1px 1px rgba(255,200,200,0.15)", letterSpacing: "-0.5px" }}>{yearLabel}</span>
+        </div>
       </div>
-      {/* Gloss highlight */}
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.05) 100%)", zIndex: 2, pointerEvents: "none" }} />
+      {/* Month label — bottom, embossed into leather */}
+      <div style={{ position: "absolute", bottom: 5, left: 0, right: 0, zIndex: 3, textAlign: "center" }}>
+        <span style={{ fontFamily: "'Caveat',cursive", fontSize: 9, color: "rgba(255,255,255,0.75)", textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>{month}</span>
+      </div>
+      {/* Worn edge — top right corner fold hint */}
+      <div style={{ position: "absolute", top: 0, right: 3, width: 8, height: 8, background: "linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.08) 50%)", zIndex: 3 }} />
     </button>
   );
 
@@ -163,7 +179,7 @@ const CassetteTape = ({ month, yearLabel, color, onClick, coverImg, onDoubleClic
         <div style={{ width: 16, height: 16, borderRadius: "50%", border: `1.5px solid ${rb}`, position: "relative" }}><div style={{ position: "absolute", inset: 4, borderRadius: "50%", background: tc.reel }} /></div>
         <div style={{ position: "absolute", top: "50%", left: 16, right: 16, height: 1, background: tc.reel }} />
       </div>
-      <div style={{ position: "absolute", top: 40, left: 8, right: 8, bottom: 18, background: tc.labelBg, borderRadius: 2, boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
+      <div style={{ position: "absolute", top: 40, left: 8, right: 8, bottom: 18, background: tc.labelBg, borderRadius: 2, boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <div style={{ position: "absolute", top: 10, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
         <div style={{ position: "absolute", top: 20, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
         <div style={{ position: "absolute", top: 30, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
@@ -199,300 +215,298 @@ const ShelfRow = ({ year, tapes, onTap, tapCovers, onDoubleTap }) => (
 /* ================================================================
    TAPE COVER MODAL — template switcher + stickers + hand draw
    ================================================================ */
+/* ================================================================
+   COVER TEMPLATES — 7 styles from reference images
+   ================================================================ */
+const COVER_TEMPLATES = [
+  { id: "pink_note", name: "粉色便签", render: (ctx, w, h) => {
+    ctx.fillStyle = "#D4727A"; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(0,0,0,0.15)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(w*0.1, h*0.08); ctx.lineTo(w*0.9, h*0.08); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w*0.1, h*0.18); ctx.lineTo(w*0.9, h*0.18); ctx.stroke();
+    for (let y = h*0.25; y < h*0.92; y += h*0.08) { ctx.strokeStyle = "rgba(0,0,0,0.05)"; ctx.beginPath(); ctx.moveTo(w*0.1, y); ctx.lineTo(w*0.9, y); ctx.stroke(); }
+    ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.font = `${Math.round(w*0.08)}px monospace`; ctx.fillText("to:", w*0.12, h*0.15); ctx.fillText("date:", w*0.65, h*0.15);
+    ctx.font = `${Math.round(w*0.07)}px monospace`; ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.fillText("note:", w*0.12, h*0.24);
+  }},
+  { id: "dark_editorial", name: "深色编辑", render: (ctx, w, h) => {
+    ctx.fillStyle = "#3A3A42"; ctx.fillRect(0, 0, w, h);
+    ctx.setLineDash([3, 5]); ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(w*0.06, 0); ctx.lineTo(w*0.06, h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w*0.94, 0); ctx.lineTo(w*0.94, h); ctx.stroke();
+    ctx.setLineDash([]); ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.beginPath(); ctx.moveTo(w*0.25, h*0.45); ctx.lineTo(w*0.75, h*0.45); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w*0.3, h*0.55); ctx.lineTo(w*0.7, h*0.55); ctx.stroke();
+  }},
+  { id: "vintage_collage", name: "复古拼贴", render: (ctx, w, h) => {
+    ctx.fillStyle = "#E8DCC8"; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = "#D8C8A8"; ctx.fillRect(w*0.05, h*0.06, w*0.9, h*0.12);
+    ctx.save(); ctx.translate(w*0.12, h*0.22); ctx.rotate(-0.05); ctx.fillStyle = "#C8B898"; ctx.fillRect(0, 0, w*0.35, h*0.3); ctx.restore();
+    ctx.save(); ctx.translate(w*0.35, h*0.25); ctx.rotate(0.03); ctx.fillStyle = "#BFB090"; ctx.fillRect(0, 0, w*0.4, h*0.22); ctx.restore();
+    ctx.save(); ctx.translate(w*0.55, h*0.2); ctx.rotate(0.08); ctx.fillStyle = "#B8A888"; ctx.fillRect(0, 0, w*0.28, h*0.18); ctx.restore();
+    ctx.fillStyle = "rgba(0,0,0,0.03)"; for (let y = 0; y < h; y += h*0.04) { ctx.fillRect(0, y, w, 1); }
+  }},
+  { id: "color_blocks", name: "色块几何", render: (ctx, w, h) => {
+    ctx.fillStyle = "#F0E8D8"; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = "#D85A30"; ctx.fillRect(0, 0, w*0.55, h*0.42);
+    ctx.fillStyle = "#4A9AB5"; ctx.fillRect(w*0.55, 0, w*0.45, h*0.38);
+    ctx.fillStyle = "#1A7A5A"; ctx.fillRect(0, h*0.58, w*0.6, h*0.42);
+    ctx.fillStyle = "#C83068"; ctx.fillRect(w*0.6, h*0.62, w*0.4, h*0.38);
+    ctx.fillStyle = "#E8D090"; ctx.fillRect(0, h*0.42, w, h*0.06);
+    for (let i = 0; i < 20; i++) { ctx.strokeStyle = "rgba(0,0,0,0.03)"; ctx.beginPath(); ctx.moveTo(i*w*0.04, 0); ctx.lineTo(i*w*0.04+w*0.3, h*0.42); ctx.stroke(); }
+  }},
+  { id: "retro_stamp", name: "复古邮票", render: (ctx, w, h) => {
+    ctx.fillStyle = "#5A8A50"; ctx.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 5) { ctx.fillStyle = "rgba(0,0,0,0.015)"; ctx.fillRect(0, y, w, 1); }
+    ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.lineWidth = 1; ctx.strokeRect(w*0.06, h*0.04, w*0.88, h*0.92);
+    ctx.fillStyle = "rgba(240,235,220,0.85)"; ctx.beginPath(); ctx.arc(w/2, h*0.45, w*0.18, 0, Math.PI*2); ctx.fill();
+  }},
+  { id: "dark_glow", name: "暗夜光影", render: (ctx, w, h) => {
+    ctx.fillStyle = "#2A1A12"; ctx.fillRect(0, 0, w, h);
+    const grd = ctx.createRadialGradient(w*0.45, h*0.5, 0, w*0.5, h*0.5, w*0.7);
+    grd.addColorStop(0, "rgba(180,100,40,0.3)"); grd.addColorStop(0.5, "rgba(120,50,20,0.15)"); grd.addColorStop(1, "transparent");
+    ctx.fillStyle = grd; ctx.fillRect(0, 0, w, h);
+    const grd2 = ctx.createRadialGradient(w*0.4, h*0.45, 0, w*0.5, h*0.5, w*0.5);
+    grd2.addColorStop(0, "rgba(200,160,80,0.12)"); grd2.addColorStop(1, "transparent");
+    ctx.fillStyle = grd2; ctx.fillRect(0, 0, w, h);
+  }},
+  { id: "magazine", name: "杂志排版", render: (ctx, w, h) => {
+    ctx.fillStyle = "#E8E4DE"; ctx.fillRect(0, 0, w, h);
+    const skyGrd = ctx.createLinearGradient(0, 0, 0, h);
+    skyGrd.addColorStop(0, "#88B8D0"); skyGrd.addColorStop(0.5, "#A0C8D8"); skyGrd.addColorStop(1, "#D0D8D0");
+    ctx.fillStyle = skyGrd; ctx.fillRect(w*0.5, 0, w*0.5, h);
+    ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.beginPath(); ctx.arc(w*0.7, h*0.65, w*0.25, 0, Math.PI*2); ctx.fill();
+  }},
+];
+
+const LABEL_SHAPES = [
+  { id: "pill", name: "胶囊", rx: 99 },
+  { id: "rect", name: "方块", rx: 2 },
+  { id: "round", name: "圆角", rx: 8 },
+  { id: "none", name: "无底", rx: 0 },
+];
+
 const STICKERS = [
   "📔","📕","📗","📘","📙","📓","📖","🎵","🎶","☕","🌸","🌿","🍂","❄️","🌙","⭐","🔥","💡","🎨","🖋️",
   "✈️","🏠","🎂","🎁","💌","📷","🎧","🌈","🦋","🐾","🍀","🌻","🍁","💎","⏰","🗺️","🎯","🏆","🧸","💫"
 ];
-const COVER_COLORS = [
-  { name: "深红", bg: "linear-gradient(170deg, #8B2020, #5C1515)" },
-  { name: "藏蓝", bg: "linear-gradient(170deg, #1a2a5e, #0f1a3a)" },
-  { name: "墨绿", bg: "linear-gradient(170deg, #1a4a2a, #0f2a18)" },
-  { name: "棕褐", bg: "linear-gradient(170deg, #6B4A2A, #3C2A18)" },
-  { name: "紫灰", bg: "linear-gradient(170deg, #4A3A5A, #2A1A3A)" },
-  { name: "炭黑", bg: "linear-gradient(170deg, #3A3A3A, #1A1A1A)" },
-  { name: "奶白", bg: "linear-gradient(170deg, #F5F0E8, #E8E0D0)" },
-  { name: "暖金", bg: "linear-gradient(170deg, #B8942A, #8A6A1A)" },
-];
 
+/* ================================================================
+   TAPE COVER MODAL — templates + photo + draw + draggable label
+   ================================================================ */
 const TapeCoverModal = ({ tapeInfo, coverImg, drawingImg, onClose, onSetCover, onSaveDrawing }) => {
   const canvasRef = useRef(null);
-  const [tab, setTab] = useState(coverImg ? "photo" : drawingImg ? "draw" : "template"); // template | photo | draw
+  const previewRef = useRef(null);
+  const fileRef = useRef(null);
+  const [tab, setTab] = useState("template");
+  const [selTemplate, setSelTemplate] = useState(null);
   const [drawMode, setDrawMode] = useState(false);
   const [brushColor, setBrushColor] = useState("#261201");
   const [brushSize, setBrushSize] = useState(3);
   const [stickerMode, setStickerMode] = useState(false);
-  const [placedStickers, setPlacedStickers] = useState([]); // { emoji, x, y }
+  const [placedStickers, setPlacedStickers] = useState([]);
   const isDown = useRef(false);
   const lastPos = useRef(null);
-  const fileRef = useRef(null);
-  const [selectedColorBg, setSelectedColorBg] = useState(null);
-  const [titleText, setTitleText] = useState(tapeInfo?.month || "");
-
+  const [labelPos, setLabelPos] = useState({ x: 50, y: 85 });
+  const [labelShape, setLabelShape] = useState("pill");
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef(null);
   const brushColors = ["#261201","#736356","#C8A060","#D4722A","#2B6E6E","#8B8C6A","#9A1C1C","#1a1a6e","#fff"];
 
-  // Init canvas
+  useEffect(() => {
+    if (tab !== "template" || !selTemplate) return;
+    const canvas = previewRef.current; if (!canvas) return;
+    const ctx = canvas.getContext('2d'); canvas.width = 300; canvas.height = 400;
+    const tpl = COVER_TEMPLATES.find(t => t.id === selTemplate);
+    if (tpl) tpl.render(ctx, 300, 400);
+  }, [selTemplate, tab]);
+
   useEffect(() => {
     if (tab !== "draw" || !drawMode) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    canvas.width = 300; canvas.height = 400;
+    const canvas = canvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext('2d'); canvas.width = 300; canvas.height = 400;
     ctx.clearRect(0, 0, 300, 400);
-    if (drawingImg) {
-      const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0, 300, 400);
-      img.src = drawingImg;
-    }
+    if (drawingImg) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, 300, 400); img.src = drawingImg; }
   }, [drawMode, drawingImg, tab]);
 
-  const getPos = (e) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches?.[0] || e;
-    return { x: (touch.clientX - rect.left) * (300 / rect.width), y: (touch.clientY - rect.top) * (400 / rect.height) };
-  };
+  const getPos = (e) => { const r = (canvasRef.current || previewRef.current).getBoundingClientRect(); const t = e.touches?.[0] || e; return { x: (t.clientX - r.left) * (300 / r.width), y: (t.clientY - r.top) * (400 / r.height) }; };
   const startDraw = (e) => { if (stickerMode) return; e.preventDefault(); isDown.current = true; lastPos.current = getPos(e); };
-  const moveDraw = (e) => {
-    if (stickerMode || !isDown.current) return;
-    e.preventDefault();
-    const ctx = canvasRef.current.getContext('2d');
-    const pos = getPos(e);
-    ctx.strokeStyle = brushColor;
-    ctx.lineWidth = brushSize;
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y); ctx.stroke();
-    lastPos.current = pos;
-  };
+  const moveDraw = (e) => { if (stickerMode || !isDown.current) return; e.preventDefault(); const ctx = canvasRef.current.getContext('2d'); const pos = getPos(e); ctx.strokeStyle = brushColor; ctx.lineWidth = brushSize; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y); ctx.stroke(); lastPos.current = pos; };
   const endDraw = () => { isDown.current = false; };
   const clearCanvas = () => { const ctx = canvasRef.current?.getContext('2d'); if (ctx) ctx.clearRect(0, 0, 300, 400); setPlacedStickers([]); };
+  const handleCanvasTap = (e) => { if (!stickerMode) return; const pos = getPos(e); setPlacedStickers(prev => [...prev, { emoji: brushColor, x: pos.x, y: pos.y }]); };
+  const saveCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext('2d'); placedStickers.forEach(s => { ctx.font = '28px serif'; ctx.textAlign = 'center'; ctx.fillText(s.emoji, s.x, s.y + 10); }); onSaveDrawing(canvas.toDataURL('image/png')); setDrawMode(false); setPlacedStickers([]); };
+  const handleFile = (e) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => onSetCover(reader.result); reader.readAsDataURL(file); };
 
-  // Place sticker on canvas tap
-  const handleCanvasTap = (e) => {
-    if (!stickerMode || !brushColor) return;
-    const pos = getPos(e);
-    setPlacedStickers(prev => [...prev, { emoji: brushColor, x: pos.x, y: pos.y }]);
-  };
-
-  const saveCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    // Draw stickers onto canvas before saving
-    const ctx = canvas.getContext('2d');
-    placedStickers.forEach(s => {
-      ctx.font = '28px serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(s.emoji, s.x, s.y + 10);
-    });
-    onSaveDrawing(canvas.toDataURL('image/png'));
-    setDrawMode(false);
-    setPlacedStickers([]);
-  };
-
-  const handleFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => onSetCover(reader.result);
-    reader.readAsDataURL(file);
-  };
-
-  // Save color+title template as cover
   const saveTemplate = () => {
-    if (!selectedColorBg) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = 300; canvas.height = 400;
+    const canvas = document.createElement('canvas'); canvas.width = 300; canvas.height = 400;
     const ctx = canvas.getContext('2d');
-    // Draw gradient bg
-    const grad = ctx.createLinearGradient(0, 0, 50, 400);
-    const bgMatch = selectedColorBg.match(/#[0-9a-fA-F]{6}/g) || ['#3A3A3A', '#1A1A1A'];
-    grad.addColorStop(0, bgMatch[0]); grad.addColorStop(1, bgMatch[1] || bgMatch[0]);
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, 300, 400);
-    // Title
-    ctx.fillStyle = bgMatch[0] === '#F5F0E8' ? '#4A3A2A' : 'rgba(255,255,255,0.9)';
-    ctx.font = 'bold 28px Georgia, serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(titleText || tapeInfo?.month, 150, 180);
-    // Year
-    ctx.font = '16px monospace';
-    ctx.fillStyle = bgMatch[0] === '#F5F0E8' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)';
-    ctx.fillText(tapeInfo?.year || '', 150, 210);
-    // Decorative line
-    ctx.strokeStyle = bgMatch[0] === '#F5F0E8' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(100, 230); ctx.lineTo(200, 230); ctx.stroke();
+    const tpl = COVER_TEMPLATES.find(t => t.id === selTemplate);
+    if (tpl) tpl.render(ctx, 300, 400);
+    const x = (labelPos.x / 100) * 300, y = (labelPos.y / 100) * 400;
+    const txt = tapeInfo?.month || "";
+    ctx.font = "600 20px Georgia, serif";
+    const tw = ctx.measureText(txt).width;
+    const shape = LABEL_SHAPES.find(s => s.id === labelShape);
+    if (shape && shape.id !== "none") {
+      const pw = tw + 24, ph = 28;
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x - pw/2, y - ph/2, pw, ph, Math.min(shape.rx, ph/2)); ctx.fill(); }
+      else { ctx.fillRect(x - pw/2, y - ph/2, pw, ph); }
+    }
+    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 3;
+    ctx.fillText(txt, x, y); ctx.shadowBlur = 0;
     onSetCover(canvas.toDataURL('image/png'));
   };
 
-  if (!tapeInfo) return null;
+  const startDrag = (e) => { e.preventDefault(); e.stopPropagation(); setDragging(true); };
+  useEffect(() => {
+    if (!dragging) return;
+    const mv = (e) => {
+      e.preventDefault();
+      const el = document.querySelector('[data-cover-preview]');
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const t = e.touches?.[0] || e;
+      setLabelPos({ x: Math.max(10, Math.min(90, ((t.clientX - r.left) / r.width) * 100)), y: Math.max(8, Math.min(95, ((t.clientY - r.top) / r.height) * 100)) });
+    };
+    const up = () => setDragging(false);
+    window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up);
+    window.addEventListener('touchmove', mv, { passive: false }); window.addEventListener('touchend', up);
+    return () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); window.removeEventListener('touchmove', mv); window.removeEventListener('touchend', up); };
+  }, [dragging]);
 
+  if (!tapeInfo) return null;
   const tabs = [{ k: "template", l: "模板" }, { k: "photo", l: "相册" }, { k: "draw", l: "手绘" }];
+  const curShape = LABEL_SHAPES.find(s => s.id === labelShape);
+
+  const LabelOverlay = ({ size }) => (
+    <div onMouseDown={startDrag} onTouchStart={startDrag}
+      style={{ position: "absolute", left: `${labelPos.x}%`, top: `${labelPos.y}%`, transform: "translate(-50%, -50%)",
+        background: curShape?.id === "none" ? "transparent" : "rgba(0,0,0,0.45)",
+        padding: size === "sm" ? "3px 10px" : "4px 12px", borderRadius: curShape?.rx || 2, cursor: "grab",
+        fontFamily: "'Caveat',cursive", fontSize: size === "sm" ? 14 : 16, fontWeight: 600, color: "#fff",
+        textShadow: "0 1px 3px rgba(0,0,0,0.4)", whiteSpace: "nowrap", userSelect: "none", zIndex: 3,
+        boxShadow: dragging ? `0 0 0 2px ${C.gold}` : "none",
+      }}>{tapeInfo.month}</div>
+  );
+
+  const ShapePicker = () => (
+    <div style={{ display: "flex", gap: 6, marginBottom: 10, justifyContent: "center" }}>
+      {LABEL_SHAPES.map(s => (
+        <button key={s.id} onClick={() => setLabelShape(s.id)} style={{
+          padding: "4px 10px", borderRadius: 4, border: "none", cursor: "pointer",
+          background: labelShape === s.id ? C.gold : "rgba(0,0,0,0.05)",
+          color: labelShape === s.id ? "#fff" : C.brown,
+          fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, fontWeight: 600,
+        }}>{s.name}</button>
+      ))}
+    </div>
+  );
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", animation: "fadeIn 0.2s" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{ width: 320, background: C.warm, borderRadius: 16, padding: 16, position: "relative", maxHeight: "92vh", overflow: "auto" }}>
-        {/* Close */}
         <button onClick={onClose} style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.06)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 5 }}>
           <svg width="14" height="14" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>
         </button>
-
         <div style={{ textAlign: "center", marginBottom: 10 }}>
           <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 700, color: C.dark }}>{tapeInfo.month} 封面</div>
         </div>
-
-        {/* Tab switcher — swipe-style pills */}
         <div style={{ display: "flex", background: "rgba(0,0,0,0.04)", borderRadius: 8, padding: 3, marginBottom: 14 }}>
           {tabs.map(t => (
             <button key={t.k} onClick={() => { setTab(t.k); setDrawMode(false); setStickerMode(false); }}
-              style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: "none", cursor: "pointer",
-                background: tab === t.k ? "#fff" : "transparent",
-                boxShadow: tab === t.k ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
-                fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600,
-                color: tab === t.k ? C.dark : C.lbrown, transition: "all 0.2s",
-              }}>{t.l}</button>
+              style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: "none", cursor: "pointer", background: tab === t.k ? "#fff" : "transparent", boxShadow: tab === t.k ? "0 1px 4px rgba(0,0,0,0.1)" : "none", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, color: tab === t.k ? C.dark : C.lbrown, transition: "all 0.2s" }}>{t.l}</button>
           ))}
         </div>
 
-        {/* ===== TAB: Template — color + title presets ===== */}
-        {tab === "template" && (
-          <div>
-            {/* Book preview */}
-            <div style={{ width: 160, height: 210, margin: "0 auto 14px", borderRadius: "2px 6px 6px 2px", overflow: "hidden", position: "relative",
-              background: selectedColorBg || "linear-gradient(170deg, #6B4A2A, #3C2A18)",
-              boxShadow: "4px 4px 16px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.15)" }}>
-              <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 8, background: "linear-gradient(90deg, rgba(0,0,0,0.3), rgba(0,0,0,0.1), rgba(255,255,255,0.08))" }} />
-              <div style={{ position: "absolute", right: 0, top: 4, bottom: 4, width: 4, background: "repeating-linear-gradient(180deg, #f5f0e8 0px, #f5f0e8 1px, #e8e2d8 1px, #e8e2d8 2px)", borderRadius: "0 2px 2px 0" }} />
-              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20 }}>
-                <input value={titleText} onChange={e => setTitleText(e.target.value)} placeholder={tapeInfo.month}
-                  style={{ background: "none", border: "none", outline: "none", textAlign: "center", fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 700,
-                    color: (selectedColorBg || "").includes('#F5F0E8') ? "#4A3A2A" : "rgba(255,255,255,0.9)", width: "100%" }} />
-                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: (selectedColorBg || "").includes('#F5F0E8') ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.4)", marginTop: 4 }}>{tapeInfo.year}</div>
-              </div>
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 40%)", pointerEvents: "none" }} />
-            </div>
-            {/* Color picker */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 14 }}>
-              {COVER_COLORS.map((c, i) => (
-                <button key={i} onClick={() => setSelectedColorBg(c.bg)}
-                  style={{ width: 32, height: 32, borderRadius: 6, border: selectedColorBg === c.bg ? `2px solid ${C.gold}` : "2px solid transparent",
-                    background: c.bg, cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }} />
-              ))}
-            </div>
-            <button onClick={saveTemplate} style={{ width: "100%", padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>
-              应用此封面
-            </button>
-          </div>
-        )}
-
-        {/* ===== TAB: Photo — upload image ===== */}
-        {tab === "photo" && (
-          <div>
-            {/* Preview */}
-            <div style={{ width: 160, height: 210, margin: "0 auto 14px", borderRadius: "2px 6px 6px 2px", overflow: "hidden", position: "relative",
-              background: C.cream, boxShadow: "4px 4px 16px rgba(0,0,0,0.3)" }}>
-              {coverImg ? (
-                <img src={coverImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 6 }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke={C.lbrown} strokeWidth="1.5"/><path d="M12 8v8M8 12h8" stroke={C.lbrown} strokeWidth="1.5" strokeLinecap="round"/></svg>
-                  <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.lbrown }}>选择图片</span>
+        {tab === "template" && (<div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12, justifyContent: "center" }}>
+            {COVER_TEMPLATES.map(t => (
+              <button key={t.id} onClick={() => setSelTemplate(t.id)} style={{ width: 60, height: 80, borderRadius: 4, border: selTemplate === t.id ? `2px solid ${C.gold}` : "2px solid transparent", cursor: "pointer", overflow: "hidden", padding: 0, boxShadow: "0 2px 6px rgba(0,0,0,0.12)", position: "relative" }}>
+                <canvas ref={el => { if (el && !el.dataset.drawn) { el.width = 60; el.height = 80; t.render(el.getContext('2d'), 60, 80); el.dataset.drawn = "1"; }}} width={60} height={80} style={{ width: "100%", height: "100%" }} />
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "2px 0", background: "rgba(0,0,0,0.5)", textAlign: "center" }}>
+                  <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 7, color: "#fff" }}>{t.name}</span>
                 </div>
-              )}
-              <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 8, background: "linear-gradient(90deg, rgba(0,0,0,0.25), rgba(0,0,0,0.08), rgba(255,255,255,0.05))" }} />
-              <div style={{ position: "absolute", right: 0, top: 4, bottom: 4, width: 4, background: "repeating-linear-gradient(180deg, #f5f0e8 0px, #f5f0e8 1px, #e8e2d8 1px, #e8e2d8 2px)", borderRadius: "0 2px 2px 0" }} />
-              {coverImg && <div style={{ position: "absolute", bottom: 6, left: 10, right: 6, textAlign: "center" }}>
-                <span style={{ fontFamily: "'Caveat',cursive", fontSize: 12, color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.7)" }}>{tapeInfo.month}</span>
+              </button>
+            ))}
+          </div>
+          {selTemplate && (<>
+            <div data-cover-preview style={{ position: "relative", width: "100%", height: 260, borderRadius: 8, overflow: "hidden", marginBottom: 10, border: "1px solid rgba(0,0,0,0.06)" }}>
+              <canvas ref={previewRef} width={300} height={400} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <LabelOverlay />
+              <div style={{ position: "absolute", bottom: 4, left: 0, right: 0, textAlign: "center", fontFamily: "'IBM Plex Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.5)" }}>拖动月份标签调整位置</div>
+            </div>
+            <ShapePicker />
+            <button onClick={saveTemplate} style={{ width: "100%", padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>应用此封面</button>
+          </>)}
+        </div>)}
+
+        {tab === "photo" && (<div>
+          <div data-cover-preview style={{ position: "relative", width: 180, height: 240, margin: "0 auto 14px", borderRadius: "2px 6px 6px 2px", overflow: "hidden", background: C.cream, boxShadow: "4px 4px 16px rgba(0,0,0,0.3)" }}>
+            {coverImg ? <img src={coverImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> :
+              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 6 }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke={C.lbrown} strokeWidth="1.5"/><path d="M12 8v8M8 12h8" stroke={C.lbrown} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.lbrown }}>选择图片</span>
               </div>}
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => fileRef.current?.click()} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>选择图片</button>
-              {coverImg && <button onClick={() => onSetCover(null)} style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>移除</button>}
-            </div>
+            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 8, background: "linear-gradient(90deg, rgba(0,0,0,0.25), rgba(0,0,0,0.08), rgba(255,255,255,0.05))" }} />
+            <div style={{ position: "absolute", right: 0, top: 4, bottom: 4, width: 4, background: "repeating-linear-gradient(180deg, #f5f0e8 0px, #f5f0e8 1px, #e8e2d8 1px, #e8e2d8 2px)" }} />
+            {coverImg && <LabelOverlay size="sm" />}
           </div>
-        )}
+          {coverImg && <ShapePicker />}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => fileRef.current?.click()} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>选择图片</button>
+            {coverImg && <button onClick={() => onSetCover(null)} style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>移除</button>}
+          </div>
+        </div>)}
 
-        {/* ===== TAB: Draw — canvas + stickers + emoji ===== */}
-        {tab === "draw" && (
-          <div>
-            {/* Canvas area */}
-            <div style={{ position: "relative", width: "100%", height: 380, borderRadius: 8, overflow: "hidden", background: C.cream, border: "1px solid rgba(0,0,0,0.06)", marginBottom: 10 }}>
-              {drawMode ? (<>
-                <canvas ref={canvasRef} width={300} height={400}
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", touchAction: "none", cursor: stickerMode ? "copy" : "crosshair" }}
-                  onMouseDown={stickerMode ? handleCanvasTap : startDraw} onMouseMove={moveDraw} onMouseUp={endDraw} onMouseLeave={endDraw}
-                  onTouchStart={stickerMode ? handleCanvasTap : startDraw} onTouchMove={moveDraw} onTouchEnd={endDraw} />
-                {/* Stickers overlay (visual only, they get baked into canvas on save) */}
-                {placedStickers.map((s, i) => (
-                  <div key={i} style={{ position: "absolute", left: `${(s.x/300)*100}%`, top: `${(s.y/400)*100}%`, fontSize: 24, transform: "translate(-50%, -50%)", pointerEvents: "none" }}>{s.emoji}</div>
-                ))}
-              </>) : (
-                <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                  {drawingImg ? (
-                    <img src={drawingImg} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-                  ) : (
-                    <>
-                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke={C.lbrown} strokeWidth="1.5"/></svg>
-                      <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: C.lbrown }}>开始创作</span>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
+        {tab === "draw" && (<div>
+          <div style={{ position: "relative", width: "100%", height: 320, borderRadius: 8, overflow: "hidden", background: C.cream, border: "1px solid rgba(0,0,0,0.06)", marginBottom: 10 }}>
             {drawMode ? (<>
-              {/* Tool switcher: brush / sticker */}
-              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                <button onClick={() => setStickerMode(false)} style={{ flex: 1, padding: 6, borderRadius: 6, border: "none", cursor: "pointer", background: !stickerMode ? C.teal : "rgba(0,0,0,0.04)", color: !stickerMode ? "#fff" : C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, fontWeight: 600 }}>🖌️ 画笔</button>
-                <button onClick={() => setStickerMode(true)} style={{ flex: 1, padding: 6, borderRadius: 6, border: "none", cursor: "pointer", background: stickerMode ? C.orange : "rgba(0,0,0,0.04)", color: stickerMode ? "#fff" : C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, fontWeight: 600 }}>🎨 贴纸</button>
-              </div>
-
-              {!stickerMode ? (
-                /* Brush colors + size */
-                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 10, flexWrap: "wrap" }}>
-                  {brushColors.map(c => (
-                    <button key={c} onClick={() => setBrushColor(c)} style={{
-                      width: 22, height: 22, borderRadius: "50%", border: brushColor === c ? `2px solid ${C.gold}` : "2px solid transparent",
-                      background: c, cursor: "pointer", boxShadow: c === "#fff" ? "inset 0 0 0 1px rgba(0,0,0,0.15)" : "none",
-                    }} />
-                  ))}
-                  <input type="range" min="1" max="12" value={brushSize} onChange={e => setBrushSize(Number(e.target.value))} style={{ width: 50, marginLeft: 4 }} />
-                </div>
-              ) : (
-                /* Sticker/Emoji picker */
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10, maxHeight: 100, overflow: "auto", padding: 4, background: "rgba(0,0,0,0.02)", borderRadius: 6 }}>
-                  {STICKERS.map((s, i) => (
-                    <button key={i} onClick={() => setBrushColor(s)}
-                      style={{ width: 32, height: 32, borderRadius: 6, border: brushColor === s ? `2px solid ${C.orange}` : "2px solid transparent",
-                        background: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Actions */}
-              <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={saveCanvas} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>保存</button>
-                <button onClick={clearCanvas} style={{ padding: "10px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>清除</button>
-                <button onClick={() => { setDrawMode(false); setStickerMode(false); setPlacedStickers([]); }} style={{ padding: "10px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>取消</button>
-              </div>
+              <canvas ref={canvasRef} width={300} height={400} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", touchAction: "none", cursor: stickerMode ? "copy" : "crosshair" }}
+                onMouseDown={stickerMode ? handleCanvasTap : startDraw} onMouseMove={moveDraw} onMouseUp={endDraw} onMouseLeave={endDraw}
+                onTouchStart={stickerMode ? handleCanvasTap : startDraw} onTouchMove={moveDraw} onTouchEnd={endDraw} />
+              {placedStickers.map((s, i) => (<div key={i} style={{ position: "absolute", left: `${(s.x/300)*100}%`, top: `${(s.y/400)*100}%`, fontSize: 24, transform: "translate(-50%, -50%)", pointerEvents: "none" }}>{s.emoji}</div>))}
             </>) : (
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => setDrawMode(true)} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.teal, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>{drawingImg ? "继续创作" : "开始手绘"}</button>
-                {drawingImg && <button onClick={() => onSaveDrawing(null)} style={{ padding: "10px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>移除</button>}
+              <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                {drawingImg ? <img src={drawingImg} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : (<>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke={C.lbrown} strokeWidth="1.5"/></svg>
+                  <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: C.lbrown }}>开始创作</span>
+                </>)}
               </div>
             )}
           </div>
-        )}
+          {drawMode ? (<>
+            <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+              <button onClick={() => setStickerMode(false)} style={{ flex: 1, padding: 6, borderRadius: 6, border: "none", cursor: "pointer", background: !stickerMode ? C.teal : "rgba(0,0,0,0.04)", color: !stickerMode ? "#fff" : C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, fontWeight: 600 }}>画笔</button>
+              <button onClick={() => setStickerMode(true)} style={{ flex: 1, padding: 6, borderRadius: 6, border: "none", cursor: "pointer", background: stickerMode ? C.orange : "rgba(0,0,0,0.04)", color: stickerMode ? "#fff" : C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, fontWeight: 600 }}>贴纸</button>
+            </div>
+            {!stickerMode ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 10, flexWrap: "wrap" }}>
+                {brushColors.map(c => (<button key={c} onClick={() => setBrushColor(c)} style={{ width: 22, height: 22, borderRadius: "50%", border: brushColor === c ? `2px solid ${C.gold}` : "2px solid transparent", background: c, cursor: "pointer", boxShadow: c === "#fff" ? "inset 0 0 0 1px rgba(0,0,0,0.15)" : "none" }} />))}
+                <input type="range" min="1" max="12" value={brushSize} onChange={e => setBrushSize(Number(e.target.value))} style={{ width: 50, marginLeft: 4 }} />
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10, maxHeight: 80, overflow: "auto", padding: 4, background: "rgba(0,0,0,0.02)", borderRadius: 6 }}>
+                {STICKERS.map((s, i) => (<button key={i} onClick={() => setBrushColor(s)} style={{ width: 30, height: 30, borderRadius: 6, border: brushColor === s ? `2px solid ${C.orange}` : "2px solid transparent", background: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>{s}</button>))}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={saveCanvas} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>保存</button>
+              <button onClick={clearCanvas} style={{ padding: "10px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>清除</button>
+              <button onClick={() => { setDrawMode(false); setStickerMode(false); setPlacedStickers([]); }} style={{ padding: "10px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>取消</button>
+            </div>
+          </>) : (
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setDrawMode(true)} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.teal, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>{drawingImg ? "继续创作" : "开始手绘"}</button>
+              {drawingImg && <button onClick={() => onSaveDrawing(null)} style={{ padding: "10px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>移除</button>}
+            </div>
+          )}
+        </div>)}
 
-        {/* Reset to tape */}
         {(coverImg || drawingImg) && (
-          <button onClick={() => { onSetCover(null); onSaveDrawing(null); }}
-            style={{ width: "100%", marginTop: 10, padding: 8, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.04)", color: C.lbrown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>
-            恢复为磁带样式
-          </button>
+          <button onClick={() => { onSetCover(null); onSaveDrawing(null); }} style={{ width: "100%", marginTop: 10, padding: 8, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.04)", color: C.lbrown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>恢复为磁带样式</button>
         )}
-
         <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
       </div>
     </div>
@@ -507,45 +521,91 @@ const AIIcon = ({ s = 16, c = C.orange }) => <svg width={s} height={s} viewBox="
 /* ================================================================
    STICKY NOTE (with selection support)
    ================================================================ */
+const PAPER_STYLES = [
+  { bg: "#F5F0E4", clip: "polygon(2% 0%,8% 1%,15% 0%,22% 2%,30% 0%,38% 1%,45% 0%,52% 2%,60% 0%,68% 1%,75% 0%,82% 1%,90% 0%,95% 1%,100% 0%,100% 100%,95% 99%,88% 100%,80% 98%,72% 100%,65% 99%,58% 100%,50% 98%,42% 100%,35% 99%,28% 100%,20% 98%,12% 100%,5% 99%,0% 100%,0% 0%)", textC: "#4A3A28", dateC: "#A09080" },
+  { bg: "#EDE4DA", clip: "polygon(0% 2%,5% 0%,12% 1%,20% 0%,28% 2%,35% 0%,42% 1%,50% 0%,58% 2%,65% 0%,72% 1%,80% 0%,88% 1%,95% 0%,100% 2%,100% 97%,96% 100%,90% 98%,82% 100%,75% 99%,68% 100%,60% 98%,52% 100%,45% 99%,38% 100%,30% 98%,22% 100%,15% 99%,8% 100%,0% 98%)", textC: "#4A3A28", dateC: "#A09080" },
+  { bg: "#E2E4C8", clip: "polygon(3% 0%,10% 2%,18% 0%,25% 1%,33% 0%,40% 2%,48% 0%,55% 1%,63% 0%,70% 2%,78% 0%,85% 1%,92% 0%,100% 1%,100% 100%,97% 98%,90% 100%,83% 99%,76% 100%,68% 98%,60% 100%,53% 99%,46% 100%,38% 98%,30% 100%,23% 99%,15% 100%,8% 98%,0% 100%,0% 1%)", textC: "#3A3A28", dateC: "#6A6A50" },
+  { bg: "#D8D4CC", clip: "polygon(0% 1%,6% 0%,13% 2%,20% 0%,27% 1%,34% 0%,41% 2%,48% 0%,55% 1%,62% 0%,69% 2%,76% 0%,83% 1%,90% 0%,97% 1%,100% 0%,100% 100%,94% 99%,87% 100%,80% 98%,73% 100%,66% 99%,59% 100%,52% 98%,45% 100%,38% 99%,31% 100%,24% 98%,17% 100%,10% 99%,3% 100%,0% 99%)", textC: "#3A3628", dateC: "#7A7668" },
+  { bg: "#C4B198", clip: "polygon(1% 0%,7% 2%,14% 0%,21% 1%,29% 0%,36% 2%,44% 0%,51% 1%,59% 0%,66% 2%,74% 0%,81% 1%,89% 0%,96% 2%,100% 0%,100% 100%,94% 98%,87% 100%,79% 99%,72% 100%,64% 98%,57% 100%,49% 99%,42% 100%,34% 98%,27% 100%,19% 99%,12% 100%,4% 98%,0% 100%,0% 0%)", textC: "#F5EDE0", dateC: "rgba(255,255,255,0.5)" },
+  { bg: "#FAFAF6", clip: "polygon(0% 0%,100% 0%,100% 100%,0% 100%)", textC: "#3A3628", dateC: "#BFB1A8" },
+];
+const TAPE_CONFIGS = [
+  [{ w: 42, top: -4, left: 12, right: "auto", angle: -25, tapeC: "rgba(240,225,180,0.7)" }, { w: 36, top: -2, left: "auto", right: 8, angle: 15, tapeC: "rgba(240,225,180,0.7)" }],
+  [{ w: 48, top: -5, left: "50%", right: "auto", angle: 2, tapeC: "rgba(240,225,180,0.75)", center: true }],
+  [{ w: 38, top: -3, left: 16, right: "auto", angle: -18, tapeC: "rgba(245,242,235,0.75)" }],
+  [{ w: 44, top: -4, left: "50%", right: "auto", angle: -3, tapeC: "rgba(200,198,190,0.7)", center: true }],
+  [{ w: 36, top: -3, left: 8, right: "auto", angle: -30, tapeC: "rgba(240,225,180,0.7)" }, { w: 32, top: "auto", bottom: -3, left: "auto", right: 8, angle: 25, tapeC: "rgba(240,225,180,0.7)" }],
+  [{ w: 40, top: -4, left: "auto", right: 14, angle: 8, tapeC: "rgba(240,225,180,0.75)" }],
+];
+
 const Sticky = ({ text, date, color, rotation, selectable, selected, onSelect, onEdit, onDelete }) => {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(text);
   const save = () => { if (editText.trim() && onEdit) { onEdit(editText.trim()); } setEditing(false); };
+
+  const colorIdx = { "#FFF9C4": 0, "#FFE0B2": 1, "#C8E6C9": 2, "#BBDEFB": 3, "#F8BBD0": 4, "#E1BEE7": 5, "#B2DFDB": 2, "#FFCCBC": 1 };
+  const pi = colorIdx[color] ?? Math.abs(text.length % 6);
+  const paper = PAPER_STYLES[pi];
+  const tapes = TAPE_CONFIGS[pi];
+  const rot = selected ? 0 : (rotation || 0) * 0.4;
+
   return (
     <div onClick={selectable ? onSelect : undefined} style={{
-      width: "calc(50% - 8px)", minHeight: 105, padding: 12, background: color, borderRadius: 2,
-      boxShadow: selected ? `0 0 0 2px ${C.orange}, 2px 3px 8px rgba(0,0,0,0.15)` : "2px 3px 8px rgba(0,0,0,0.1)",
-      transform: `rotate(${selected ? 0 : rotation}deg)${selected ? " scale(1.03)" : ""}`,
+      width: "calc(50% - 8px)", minHeight: 120, padding: "22px 14px 12px",
+      background: paper.bg, clipPath: paper.clip,
+      boxShadow: selected ? `0 0 0 2px ${C.orange}, 2px 3px 10px rgba(0,0,0,0.15)` : "2px 3px 10px rgba(60,40,20,0.1)",
+      transform: `rotate(${rot}deg)${selected ? " scale(1.03)" : ""}`,
       display: "flex", flexDirection: "column", justifyContent: "space-between",
-      transition: "all 0.2s", cursor: selectable ? "pointer" : "default", position: "relative",
+      transition: "all 0.25s", cursor: selectable ? "pointer" : "default", position: "relative",
     }}
-      onMouseEnter={e => { if (!selectable) e.currentTarget.style.transform = "rotate(0deg) scale(1.04)"; }}
-      onMouseLeave={e => { if (!selectable && !selected) e.currentTarget.style.transform = `rotate(${rotation}deg) scale(1)`; }}>
+      onMouseEnter={e => { if (!selectable) e.currentTarget.style.transform = "rotate(0deg) scale(1.02)"; }}
+      onMouseLeave={e => { if (!selectable && !selected) e.currentTarget.style.transform = `rotate(${rot}deg) scale(1)`; }}>
+
+      {/* Tape strips */}
+      {tapes.map((t, i) => (
+        <div key={i} style={{
+          position: "absolute", height: 14, width: t.w, borderRadius: 1,
+          background: `linear-gradient(90deg, ${t.tapeC}, ${t.tapeC.replace('0.7', '0.85').replace('0.75', '0.9')}, ${t.tapeC})`,
+          top: t.top !== "auto" ? t.top : undefined, bottom: t.bottom || undefined,
+          left: t.center ? "50%" : (t.left !== "auto" ? t.left : undefined),
+          right: t.right !== "auto" ? t.right : undefined,
+          transform: `${t.center ? "translateX(-50%) " : ""}rotate(${t.angle}deg)`,
+          zIndex: 3, opacity: 0.85,
+        }} />
+      ))}
+
       {/* AI mode checkbox */}
       {selectable && (
-        <div style={{ position: "absolute", top: 6, right: 6, width: 18, height: 18, borderRadius: 3, border: `2px solid ${selected ? C.orange : "rgba(0,0,0,0.15)"}`, background: selected ? C.orange : "rgba(255,255,255,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "absolute", top: 6, right: 6, width: 18, height: 18, borderRadius: 3, zIndex: 4,
+          border: `2px solid ${selected ? C.orange : "rgba(0,0,0,0.12)"}`,
+          background: selected ? C.orange : "rgba(255,255,255,0.5)",
+          display: "flex", alignItems: "center", justifyContent: "center" }}>
           {selected && <svg width="10" height="10" viewBox="0 0 24 24"><path d="M5 12l5 5L19 7" stroke="#fff" strokeWidth="3" fill="none" /></svg>}
         </div>
       )}
-      {/* Edit / Delete buttons — only in normal mode */}
+
+      {/* Edit / Delete buttons */}
       {!selectable && (onEdit || onDelete) && (
-        <div style={{ position: "absolute", top: 5, right: 5, display: "flex", gap: 2 }}>
-          {onEdit && <button onClick={e => { e.stopPropagation(); setEditText(text); setEditing(true); }} style={{ background: "rgba(255,255,255,0.5)", border: "none", borderRadius: 3, width: 20, height: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke={C.brown} strokeWidth="2"/></svg>
+        <div style={{ position: "absolute", top: 5, right: 5, display: "flex", gap: 2, zIndex: 4 }}>
+          {onEdit && <button onClick={e => { e.stopPropagation(); setEditText(text); setEditing(true); }}
+            style={{ background: "rgba(255,255,255,0.5)", border: "none", borderRadius: 3, width: 20, height: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke="#6A5A48" strokeWidth="2"/></svg>
           </button>}
-          {onDelete && <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ background: "rgba(255,255,255,0.5)", border: "none", borderRadius: 3, width: 20, height: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>
+          {onDelete && <button onClick={e => { e.stopPropagation(); onDelete(); }}
+            style={{ background: "rgba(255,255,255,0.5)", border: "none", borderRadius: 3, width: 20, height: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="#6A5A48" strokeWidth="2" strokeLinecap="round"/></svg>
           </button>}
         </div>
       )}
+
       {/* Content */}
       {editing ? (
         <textarea value={editText} onChange={e => setEditText(e.target.value)} onBlur={save} autoFocus
-          style={{ fontFamily: "'Caveat',cursive", fontSize: 14, color: C.dark, lineHeight: 1.4, margin: 0, background: "rgba(255,255,255,0.4)", border: "none", outline: "none", resize: "none", minHeight: 60, borderRadius: 2, padding: 4 }} />
+          style={{ fontFamily: "Georgia,'Songti SC',serif", fontSize: 13, fontStyle: "italic", color: paper.textC, lineHeight: 1.55, margin: 0, background: "rgba(255,255,255,0.25)", border: "none", outline: "none", resize: "none", minHeight: 60, borderRadius: 2, padding: 4, position: "relative", zIndex: 2 }} />
       ) : (
-        <p style={{ fontFamily: "'Caveat',cursive", fontSize: 14, color: C.dark, lineHeight: 1.4, margin: 0 }}>{text}</p>
+        <p style={{ fontFamily: "Georgia,'Songti SC',serif", fontSize: 13, fontStyle: "italic", color: paper.textC, lineHeight: 1.55, margin: 0, position: "relative", zIndex: 1 }}>{text}</p>
       )}
-      <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: C.brown, alignSelf: "flex-end", marginTop: 6 }}>{date}</span>
+      <span style={{ fontFamily: "'Courier New',monospace", fontSize: 10, color: paper.dateC, alignSelf: "flex-end", marginTop: 10, position: "relative", zIndex: 1 }}>{date}</span>
     </div>
   );
 };
@@ -1549,10 +1609,11 @@ export default function App() {
       </div>
       {sortedMonths.map(month => (
         <div key={month} style={{ marginBottom: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <div style={{ width: 10, height: 10, borderRadius: "50%", background: C.gold, boxShadow: "0 0 0 3px rgba(200,160,96,0.2)" }} />
-            <div style={{ height: 1, flex: 1, background: `linear-gradient(90deg, ${C.gold}, transparent)` }} />
-            <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.gold, fontWeight: 600, letterSpacing: "0.1em" }}>{monthLabels[month] || month}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            {/* Wax seal dot */}
+            <div style={{ width: 12, height: 12, borderRadius: "50%", background: "radial-gradient(circle at 40% 38%, #C83030, #8B2020)", boxShadow: "0 1px 3px rgba(0,0,0,0.2), inset 0 -1px 1px rgba(0,0,0,0.15)", flexShrink: 0 }} />
+            <div style={{ height: 1, flex: 1, background: `linear-gradient(90deg, ${C.brown}40, transparent)` }} />
+            <span style={{ fontFamily: "Georgia,'Songti SC',serif", fontSize: 11, color: "#8A7A60", fontWeight: 600, fontStyle: "italic", letterSpacing: "0.05em" }}>{monthLabels[month] || month}</span>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, paddingLeft: 18 }}>
             {grouped[month].map((idea, i) => {
@@ -1569,7 +1630,7 @@ export default function App() {
         <div style={{ background: "rgba(255,255,255,0.6)", borderRadius: 12, padding: 14, border: "1px solid rgba(212,114,42,0.2)", marginTop: 4 }}>
           <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: C.orange, fontWeight: 600, marginBottom: 8 }}>已选 {ideaSelected.length} 条灵感</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10 }}>
-            {ideaSelected.map(idx => <span key={idx} style={{ padding: "3px 8px", borderRadius: 3, fontSize: 10, fontFamily: "'Caveat',cursive", background: allIdeas[idx].color, color: C.dark, boxShadow: "1px 1px 2px rgba(0,0,0,0.08)" }}>{allIdeas[idx].text.slice(0, 10)}...</span>)}
+            {ideaSelected.map(idx => <span key={idx} style={{ padding: "3px 8px", borderRadius: 2, fontSize: 10, fontFamily: "Georgia,serif", fontStyle: "italic", background: "rgba(228,216,192,0.8)", color: "#3A2A18", boxShadow: "1px 1px 3px rgba(60,40,20,0.1)", borderBottom: "2px solid #A08060" }}>{allIdeas[idx].text.slice(0, 10)}...</span>)}
           </div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, padding: "8px 10px", background: "rgba(212,114,42,0.06)", borderRadius: 6, border: "1px solid rgba(212,114,42,0.15)" }}>
