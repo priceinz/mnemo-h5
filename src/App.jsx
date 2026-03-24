@@ -394,8 +394,6 @@ export default function App() {
   const [t, setT] = useState(0);
   const [transcribing, setTranscribing] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const mediaRec = useRef(null);
-  const audioChunks = useRef([]);
   const [dv, setDv] = useState("shelf");
   const [sm, setSm] = useState(null); // { year, month } for calendar
   const [selectedDay, setSelectedDay] = useState(null);
@@ -483,51 +481,54 @@ export default function App() {
 
   const fm = s => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 
-  // Convert audio blob to WAV (Tencent ASR needs wav/mp3, not webm)
-  const blobToWav = async (blob) => {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-    const arrayBuf = await blob.arrayBuffer();
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuf);
-    const numChannels = 1;
-    const sampleRate = 16000;
-    const samples = audioBuffer.getChannelData(0);
-    const buffer = new ArrayBuffer(44 + samples.length * 2);
-    const view = new DataView(buffer);
-    // WAV header
-    const writeStr = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
-    writeStr(0, 'RIFF');
-    view.setUint32(4, 36 + samples.length * 2, true);
-    writeStr(8, 'WAVE');
-    writeStr(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, numChannels, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * 2, true);
-    view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true);
-    writeStr(36, 'data');
-    view.setUint32(40, samples.length * 2, true);
-    for (let i = 0; i < samples.length; i++) {
-      const s = Math.max(-1, Math.min(1, samples[i]));
-      view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-    }
-    audioCtx.close();
-    return new Blob([buffer], { type: 'audio/wav' });
-  };
+  // Use browser's built-in speech recognition (no server needed!)
+  const speechRec = useRef(null);
+  const liveTranscript = useRef("");
 
-  // Start recording
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } });
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
-        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '';
-      const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      audioChunks.current = [];
-      mr.ondataavailable = e => { if (e.data.size > 0) audioChunks.current.push(e.data); };
-      mr.start(500); // collect data every 500ms
-      mediaRec.current = mr;
+      // Request mic permission
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(t => t.stop()); // just for permission, release immediately
+
+      // Start speech recognition
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const sr = new SpeechRecognition();
+        sr.lang = 'zh-CN';
+        sr.continuous = true;
+        sr.interimResults = true;
+        sr.maxAlternatives = 1;
+        liveTranscript.current = "";
+
+        sr.onresult = (event) => {
+          let final = "", interim = "";
+          for (let i = 0; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+              final += event.results[i][0].transcript;
+            } else {
+              interim += event.results[i][0].transcript;
+            }
+          }
+          liveTranscript.current = final + interim;
+        };
+
+        sr.onerror = (e) => {
+          console.log('Speech recognition error:', e.error);
+          // Silently handle - user can still type manually
+        };
+
+        sr.onend = () => {
+          // Auto-restart if still recording (speech recognition auto-stops after silence)
+          if (speechRec.current && (rec || paused)) {
+            try { speechRec.current.start(); } catch(e) {}
+          }
+        };
+
+        sr.start();
+        speechRec.current = sr;
+      }
+
       setRec(true); setT(0); setTranscript("");
     } catch (e) {
       alert("无法访问麦克风，请允许录音权限后重试");
@@ -536,107 +537,40 @@ export default function App() {
 
   const onRed = () => {
     if (!rec && !paused && !showSave && !transcribing) { startRecording(); }
-    else if (rec) { mediaRec.current?.pause(); setRec(false); setPaused(true); }
+    else if (rec) {
+      // Pause: stop speech recognition temporarily
+      try { speechRec.current?.stop(); } catch(e) {}
+      setRec(false); setPaused(true);
+    }
   };
-  const onResume = () => { mediaRec.current?.resume(); setPaused(false); setRec(true); };
 
-  const onFinish = async () => {
+  const onResume = () => {
+    // Resume speech recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition && speechRec.current) {
+      try { speechRec.current.start(); } catch(e) {}
+    }
+    setPaused(false); setRec(true);
+  };
+
+  const onFinish = () => {
     setPaused(false);
-    setTranscribing(true);
+    setRec(false);
 
-    // Properly stop MediaRecorder and wait for all data
-    const blob = await new Promise((resolve) => {
-      const mr = mediaRec.current;
-      if (!mr || mr.state === 'inactive') {
-        resolve(new Blob(audioChunks.current));
-        return;
-      }
-      mr.onstop = () => {
-        const mimeType = mr.mimeType || 'audio/webm';
-        resolve(new Blob(audioChunks.current, { type: mimeType }));
-      };
-      mr.stop();
-      mr.stream?.getTracks().forEach(t => t.stop());
-    });
-
-    // Check if we actually got audio data
-    if (blob.size < 1000) {
-      setTranscript("（录音时间太短，请重试）");
-      setTranscribing(false);
-      setShowSave(true);
-      return;
+    // Stop speech recognition
+    const sr = speechRec.current;
+    if (sr) {
+      speechRec.current = null; // prevent auto-restart
+      try { sr.stop(); } catch(e) {}
     }
 
-    // Convert to WAV for Tencent ASR compatibility
-    let wavBlob;
-    try {
-      wavBlob = await blobToWav(blob);
-    } catch (e) {
-      console.error('WAV conversion failed:', e);
-      setTranscript("（音频处理失败，可手动输入）");
-      setTranscribing(false);
-      setShowSave(true);
-      return;
+    // Get the transcript
+    const text = liveTranscript.current.trim();
+    if (text) {
+      setTranscript(text);
+    } else {
+      setTranscript("");
     }
-
-    // Check WAV size (Tencent ASR limit ~10MB for one-shot)
-    if (wavBlob.size > 10 * 1024 * 1024) {
-      setTranscript("（录音时间过长，请控制在 60 秒以内）");
-      setTranscribing(false);
-      setShowSave(true);
-      return;
-    }
-
-    // Convert to base64
-    let base64;
-    try {
-      const arrayBuf = await wavBlob.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuf);
-      let binary = '';
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      base64 = btoa(binary);
-    } catch (e) {
-      setTranscript("（音频编码失败，可手动输入）");
-      setTranscribing(false);
-      setShowSave(true);
-      return;
-    }
-
-    // Call ASR with timeout
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 秒超时
-
-      const res = await fetch('/api/asr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audio: base64, format: 'wav' }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        console.error('ASR API error:', res.status, errData);
-        setTranscript(`（语音识别服务异常：${errData.detail || res.status}，可手动输入）`);
-      } else {
-        const data = await res.json();
-        if (data.text && data.text.trim()) {
-          setTranscript(data.text.trim());
-        } else {
-          setTranscript("（未识别到语音内容，可手动输入）");
-        }
-      }
-    } catch (e) {
-      if (e.name === 'AbortError') {
-        setTranscript("（语音识别超时，可手动输入）");
-      } else {
-        console.error('ASR fetch error:', e);
-        setTranscript("（网络错误，请检查连接后重试）");
-      }
-    }
-
-    setTranscribing(false);
     setShowSave(true);
   };
 
@@ -653,7 +587,7 @@ export default function App() {
     }
     setShowSave(false); setT(0); setTranscript(""); setTab(x);
   };
-  const rst = () => { setRec(false); setPaused(false); setShowSave(false); setT(0); setTranscript(""); setTranscribing(false); if (mediaRec.current?.state !== 'inactive') { try { mediaRec.current?.stop(); mediaRec.current?.stream?.getTracks().forEach(t => t.stop()); } catch(e){} } };
+  const rst = () => { setRec(false); setPaused(false); setShowSave(false); setT(0); setTranscript(""); setTranscribing(false); if (speechRec.current) { try { speechRec.current.stop(); } catch(e){} speechRec.current = null; } liveTranscript.current = ""; };
   const handleTab = (key) => setTab(key);
   const goHome = () => { setTab("record"); rst(); setDv("shelf"); setSm(null); setSelectedDay(null); setSelectedDateKey(null); };
   const GS = 250;
