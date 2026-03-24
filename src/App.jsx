@@ -113,6 +113,7 @@ const TP22Bar = ({ activeTab, onTab }) => {
    REALISTIC CASSETTE TAPE — translucent case, visible reels, label
    ================================================================ */
 const CassetteTape = ({ month, yearLabel, color, onClick, coverImg, onDoubleClick }) => {
+  const isBook = !!coverImg;
   const cases = {
     clear: { body: "linear-gradient(175deg, rgba(235,230,220,0.9), rgba(210,205,195,0.9))", shadow: "rgba(0,0,0,0.06)", reel: "rgba(0,0,0,0.08)", window: "rgba(0,0,0,0.04)", labelBg: "#FFFBF2", edge: "rgba(255,255,255,0.5)" },
     smoke: { body: "linear-gradient(175deg, rgba(120,115,108,0.88), rgba(85,82,76,0.9))", shadow: "rgba(0,0,0,0.12)", reel: "rgba(255,255,255,0.06)", window: "rgba(0,0,0,0.1)", labelBg: "#F0ECE4", edge: "rgba(255,255,255,0.12)" },
@@ -128,6 +129,30 @@ const CassetteTape = ({ month, yearLabel, color, onClick, coverImg, onDoubleClic
     if (now - lastTap.current < 350) { e.stopPropagation(); onDoubleClick?.(); lastTap.current = 0; }
     else { lastTap.current = now; setTimeout(() => { if (lastTap.current !== 0) { onClick?.(); lastTap.current = 0; } }, 360); }
   };
+
+  // === BOOK MODE — full cover image, spine, page edges ===
+  if (isBook) return (
+    <button onClick={handleClick} style={{ width: 72, height: 110, padding: 0, border: "none", cursor: "pointer", flexShrink: 0, position: "relative", borderRadius: "2px 5px 5px 2px", overflow: "hidden", boxShadow: "3px 3px 12px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.1)", transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s", background: "#ddd" }}
+      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-16px) rotate(-1.5deg)"; e.currentTarget.style.boxShadow = "5px 10px 25px rgba(0,0,0,0.25)"; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0) rotate(0deg)"; e.currentTarget.style.boxShadow = "3px 3px 12px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.1)"; }}>
+      {/* Cover image */}
+      <img src={coverImg} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+      {/* Book spine — left edge 3D effect */}
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 6, background: "linear-gradient(90deg, rgba(0,0,0,0.25), rgba(0,0,0,0.08), rgba(255,255,255,0.1))", zIndex: 2 }} />
+      {/* Page edges — right side */}
+      <div style={{ position: "absolute", right: 0, top: 3, bottom: 3, width: 3, background: "repeating-linear-gradient(180deg, #f5f0e8 0px, #f5f0e8 1px, #e8e2d8 1px, #e8e2d8 2px)", borderRadius: "0 2px 2px 0", zIndex: 2 }} />
+      {/* Top/bottom page edge hint */}
+      <div style={{ position: "absolute", bottom: 0, left: 6, right: 3, height: 2, background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.15))", zIndex: 2 }} />
+      {/* Month label overlay */}
+      <div style={{ position: "absolute", bottom: 6, left: 8, right: 5, zIndex: 3, textAlign: "center" }}>
+        <span style={{ fontFamily: "'Caveat',cursive", fontSize: 10, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.3)", fontWeight: 600 }}>{month}</span>
+      </div>
+      {/* Gloss highlight */}
+      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.05) 100%)", zIndex: 2, pointerEvents: "none" }} />
+    </button>
+  );
+
+  // === TAPE MODE — default cassette ===
   return (
     <button onClick={handleClick} style={{ width: 72, height: 110, borderRadius: 3, padding: 0, background: tc.body, border: "none", cursor: "pointer", flexShrink: 0, position: "relative", overflow: "hidden", boxShadow: `2px 3px 10px ${tc.shadow}, inset 0 1px 0 ${tc.edge}`, transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s" }}
       onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-16px) rotate(-1.5deg)"; e.currentTarget.style.boxShadow = "4px 8px 20px rgba(0,0,0,0.18)"; }}
@@ -138,19 +163,12 @@ const CassetteTape = ({ month, yearLabel, color, onClick, coverImg, onDoubleClic
         <div style={{ width: 16, height: 16, borderRadius: "50%", border: `1.5px solid ${rb}`, position: "relative" }}><div style={{ position: "absolute", inset: 4, borderRadius: "50%", background: tc.reel }} /></div>
         <div style={{ position: "absolute", top: "50%", left: 16, right: 16, height: 1, background: tc.reel }} />
       </div>
-      {/* Label area — custom image or default text */}
-      <div style={{ position: "absolute", top: 40, left: 8, right: 8, bottom: 18, borderRadius: 2, overflow: "hidden", boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.06)" }}>
-        {coverImg ? (
-          <img src={coverImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <div style={{ width: "100%", height: "100%", background: tc.labelBg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
-            <div style={{ position: "absolute", top: 10, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
-            <div style={{ position: "absolute", top: 20, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
-            <div style={{ position: "absolute", top: 30, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
-            <span style={{ fontFamily: "'Caveat',cursive", fontSize: 12, color: C.brown, lineHeight: 1, marginBottom: 1 }}>{month}</span>
-            <span style={{ fontFamily: "'Caveat',cursive", fontSize: 22, fontWeight: 600, color: C.dark, lineHeight: 1 }}>{yearLabel}</span>
-          </div>
-        )}
+      <div style={{ position: "absolute", top: 40, left: 8, right: 8, bottom: 18, background: tc.labelBg, borderRadius: 2, boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
+        <div style={{ position: "absolute", top: 10, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
+        <div style={{ position: "absolute", top: 20, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
+        <div style={{ position: "absolute", top: 30, left: 6, right: 6, height: 0.5, background: "rgba(0,0,0,0.05)" }} />
+        <span style={{ fontFamily: "'Caveat',cursive", fontSize: 12, color: C.brown, lineHeight: 1, marginBottom: 1 }}>{month}</span>
+        <span style={{ fontFamily: "'Caveat',cursive", fontSize: 22, fontWeight: 600, color: C.dark, lineHeight: 1 }}>{yearLabel}</span>
       </div>
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 8, background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.06))", borderRadius: "0 0 3px 3px" }} />
       <div style={{ position: "absolute", top: 5, left: 5, width: 3, height: 3, borderRadius: "50%", background: "rgba(0,0,0,0.06)" }} />
@@ -179,33 +197,53 @@ const ShelfRow = ({ year, tapes, onTap, tapCovers, onDoubleTap }) => (
 );
 
 /* ================================================================
-   TAPE COVER MODAL — fullscreen view + image upload + hand drawing
+   TAPE COVER MODAL — template switcher + stickers + hand draw
    ================================================================ */
+const STICKERS = [
+  "📔","📕","📗","📘","📙","📓","📖","🎵","🎶","☕","🌸","🌿","🍂","❄️","🌙","⭐","🔥","💡","🎨","🖋️",
+  "✈️","🏠","🎂","🎁","💌","📷","🎧","🌈","🦋","🐾","🍀","🌻","🍁","💎","⏰","🗺️","🎯","🏆","🧸","💫"
+];
+const COVER_COLORS = [
+  { name: "深红", bg: "linear-gradient(170deg, #8B2020, #5C1515)" },
+  { name: "藏蓝", bg: "linear-gradient(170deg, #1a2a5e, #0f1a3a)" },
+  { name: "墨绿", bg: "linear-gradient(170deg, #1a4a2a, #0f2a18)" },
+  { name: "棕褐", bg: "linear-gradient(170deg, #6B4A2A, #3C2A18)" },
+  { name: "紫灰", bg: "linear-gradient(170deg, #4A3A5A, #2A1A3A)" },
+  { name: "炭黑", bg: "linear-gradient(170deg, #3A3A3A, #1A1A1A)" },
+  { name: "奶白", bg: "linear-gradient(170deg, #F5F0E8, #E8E0D0)" },
+  { name: "暖金", bg: "linear-gradient(170deg, #B8942A, #8A6A1A)" },
+];
+
 const TapeCoverModal = ({ tapeInfo, coverImg, drawingImg, onClose, onSetCover, onSaveDrawing }) => {
   const canvasRef = useRef(null);
-  const [drawing, setDrawing] = useState(false);
+  const [tab, setTab] = useState(coverImg ? "photo" : drawingImg ? "draw" : "template"); // template | photo | draw
   const [drawMode, setDrawMode] = useState(false);
   const [brushColor, setBrushColor] = useState("#261201");
   const [brushSize, setBrushSize] = useState(3);
+  const [stickerMode, setStickerMode] = useState(false);
+  const [placedStickers, setPlacedStickers] = useState([]); // { emoji, x, y }
   const isDown = useRef(false);
   const lastPos = useRef(null);
   const fileRef = useRef(null);
+  const [selectedColorBg, setSelectedColorBg] = useState(null);
+  const [titleText, setTitleText] = useState(tapeInfo?.month || "");
 
-  // Init canvas with existing drawing
+  const brushColors = ["#261201","#736356","#C8A060","#D4722A","#2B6E6E","#8B8C6A","#9A1C1C","#1a1a6e","#fff"];
+
+  // Init canvas
   useEffect(() => {
-    if (!drawMode) return;
+    if (tab !== "draw" || !drawMode) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     canvas.width = 300; canvas.height = 400;
-    ctx.fillStyle = 'transparent';
     ctx.clearRect(0, 0, 300, 400);
     if (drawingImg) {
       const img = new Image();
       img.onload = () => ctx.drawImage(img, 0, 0, 300, 400);
       img.src = drawingImg;
     }
-  }, [drawMode, drawingImg]);
+  }, [drawMode, drawingImg, tab]);
 
   const getPos = (e) => {
     const canvas = canvasRef.current;
@@ -213,26 +251,42 @@ const TapeCoverModal = ({ tapeInfo, coverImg, drawingImg, onClose, onSetCover, o
     const touch = e.touches?.[0] || e;
     return { x: (touch.clientX - rect.left) * (300 / rect.width), y: (touch.clientY - rect.top) * (400 / rect.height) };
   };
-
-  const startDraw = (e) => { e.preventDefault(); isDown.current = true; lastPos.current = getPos(e); };
+  const startDraw = (e) => { if (stickerMode) return; e.preventDefault(); isDown.current = true; lastPos.current = getPos(e); };
   const moveDraw = (e) => {
+    if (stickerMode || !isDown.current) return;
     e.preventDefault();
-    if (!isDown.current) return;
     const ctx = canvasRef.current.getContext('2d');
     const pos = getPos(e);
     ctx.strokeStyle = brushColor;
     ctx.lineWidth = brushSize;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(lastPos.current.x, lastPos.current.y);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.stroke();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y); ctx.stroke();
     lastPos.current = pos;
   };
-  const endDraw = () => { isDown.current = false; lastPos.current = null; };
-  const clearCanvas = () => { const ctx = canvasRef.current?.getContext('2d'); if (ctx) ctx.clearRect(0, 0, 300, 400); };
-  const saveCanvas = () => { const data = canvasRef.current?.toDataURL('image/png'); if (data) onSaveDrawing(data); setDrawMode(false); };
+  const endDraw = () => { isDown.current = false; };
+  const clearCanvas = () => { const ctx = canvasRef.current?.getContext('2d'); if (ctx) ctx.clearRect(0, 0, 300, 400); setPlacedStickers([]); };
+
+  // Place sticker on canvas tap
+  const handleCanvasTap = (e) => {
+    if (!stickerMode || !brushColor) return;
+    const pos = getPos(e);
+    setPlacedStickers(prev => [...prev, { emoji: brushColor, x: pos.x, y: pos.y }]);
+  };
+
+  const saveCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    // Draw stickers onto canvas before saving
+    const ctx = canvas.getContext('2d');
+    placedStickers.forEach(s => {
+      ctx.font = '28px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(s.emoji, s.x, s.y + 10);
+    });
+    onSaveDrawing(canvas.toDataURL('image/png'));
+    setDrawMode(false);
+    setPlacedStickers([]);
+  };
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
@@ -242,75 +296,203 @@ const TapeCoverModal = ({ tapeInfo, coverImg, drawingImg, onClose, onSetCover, o
     reader.readAsDataURL(file);
   };
 
-  const colors = ["#261201", "#736356", "#C8A060", "#D4722A", "#2B6E6E", "#8B8C6A", "#9A1C1C", "#1a1a6e", "#fff"];
+  // Save color+title template as cover
+  const saveTemplate = () => {
+    if (!selectedColorBg) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = 300; canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+    // Draw gradient bg
+    const grad = ctx.createLinearGradient(0, 0, 50, 400);
+    const bgMatch = selectedColorBg.match(/#[0-9a-fA-F]{6}/g) || ['#3A3A3A', '#1A1A1A'];
+    grad.addColorStop(0, bgMatch[0]); grad.addColorStop(1, bgMatch[1] || bgMatch[0]);
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, 300, 400);
+    // Title
+    ctx.fillStyle = bgMatch[0] === '#F5F0E8' ? '#4A3A2A' : 'rgba(255,255,255,0.9)';
+    ctx.font = 'bold 28px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(titleText || tapeInfo?.month, 150, 180);
+    // Year
+    ctx.font = '16px monospace';
+    ctx.fillStyle = bgMatch[0] === '#F5F0E8' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)';
+    ctx.fillText(tapeInfo?.year || '', 150, 210);
+    // Decorative line
+    ctx.strokeStyle = bgMatch[0] === '#F5F0E8' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(100, 230); ctx.lineTo(200, 230); ctx.stroke();
+    onSetCover(canvas.toDataURL('image/png'));
+  };
 
   if (!tapeInfo) return null;
+
+  const tabs = [{ k: "template", l: "模板" }, { k: "photo", l: "相册" }, { k: "draw", l: "手绘" }];
+
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", animation: "fadeIn 0.2s" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ width: 300, background: C.warm, borderRadius: 16, padding: 20, position: "relative", maxHeight: "90vh", overflow: "auto" }}>
+      <div style={{ width: 320, background: C.warm, borderRadius: 16, padding: 16, position: "relative", maxHeight: "92vh", overflow: "auto" }}>
         {/* Close */}
-        <button onClick={onClose} style={{ position: "absolute", top: 10, right: 10, background: "rgba(0,0,0,0.06)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}>
+        <button onClick={onClose} style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.06)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 5 }}>
           <svg width="14" height="14" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>
         </button>
 
-        {/* Title */}
-        <div style={{ textAlign: "center", marginBottom: 14 }}>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 700, color: C.dark }}>{tapeInfo.month}</div>
-          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: C.brown }}>{tapeInfo.year} · {tapeInfo.label}</div>
+        <div style={{ textAlign: "center", marginBottom: 10 }}>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 700, color: C.dark }}>{tapeInfo.month} 封面</div>
         </div>
 
-        {/* Cover area */}
-        <div style={{ position: "relative", width: "100%", height: 400, borderRadius: 8, overflow: "hidden", background: C.cream, border: "1px solid rgba(0,0,0,0.06)", marginBottom: 14 }}>
-          {coverImg && <img src={coverImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />}
-          {drawingImg && !drawMode && <img src={drawingImg} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", position: "absolute", inset: 0, pointerEvents: "none" }} />}
-          {!coverImg && !drawingImg && !drawMode && (
-            <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <div style={{ fontFamily: "'Caveat',cursive", fontSize: 32, color: C.lbrown }}>{tapeInfo.month}</div>
-              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: C.lbrown }}>双击磁带进入自定义</div>
-            </div>
-          )}
-          {/* Drawing canvas overlay */}
-          {drawMode && (
-            <canvas ref={canvasRef} width={300} height={400}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", touchAction: "none", cursor: "crosshair" }}
-              onMouseDown={startDraw} onMouseMove={moveDraw} onMouseUp={endDraw} onMouseLeave={endDraw}
-              onTouchStart={startDraw} onTouchMove={moveDraw} onTouchEnd={endDraw} />
-          )}
+        {/* Tab switcher — swipe-style pills */}
+        <div style={{ display: "flex", background: "rgba(0,0,0,0.04)", borderRadius: 8, padding: 3, marginBottom: 14 }}>
+          {tabs.map(t => (
+            <button key={t.k} onClick={() => { setTab(t.k); setDrawMode(false); setStickerMode(false); }}
+              style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: "none", cursor: "pointer",
+                background: tab === t.k ? "#fff" : "transparent",
+                boxShadow: tab === t.k ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
+                fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600,
+                color: tab === t.k ? C.dark : C.lbrown, transition: "all 0.2s",
+              }}>{t.l}</button>
+          ))}
         </div>
 
-        {/* Draw mode toolbar */}
-        {drawMode ? (
+        {/* ===== TAB: Template — color + title presets ===== */}
+        {tab === "template" && (
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-              {colors.map(c => (
-                <button key={c} onClick={() => setBrushColor(c)} style={{
-                  width: 24, height: 24, borderRadius: "50%", border: brushColor === c ? `2px solid ${C.gold}` : "2px solid transparent",
-                  background: c, cursor: "pointer", boxShadow: c === "#fff" ? "inset 0 0 0 1px rgba(0,0,0,0.15)" : "none",
-                }} />
+            {/* Book preview */}
+            <div style={{ width: 160, height: 210, margin: "0 auto 14px", borderRadius: "2px 6px 6px 2px", overflow: "hidden", position: "relative",
+              background: selectedColorBg || "linear-gradient(170deg, #6B4A2A, #3C2A18)",
+              boxShadow: "4px 4px 16px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.15)" }}>
+              <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 8, background: "linear-gradient(90deg, rgba(0,0,0,0.3), rgba(0,0,0,0.1), rgba(255,255,255,0.08))" }} />
+              <div style={{ position: "absolute", right: 0, top: 4, bottom: 4, width: 4, background: "repeating-linear-gradient(180deg, #f5f0e8 0px, #f5f0e8 1px, #e8e2d8 1px, #e8e2d8 2px)", borderRadius: "0 2px 2px 0" }} />
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20 }}>
+                <input value={titleText} onChange={e => setTitleText(e.target.value)} placeholder={tapeInfo.month}
+                  style={{ background: "none", border: "none", outline: "none", textAlign: "center", fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 700,
+                    color: (selectedColorBg || "").includes('#F5F0E8') ? "#4A3A2A" : "rgba(255,255,255,0.9)", width: "100%" }} />
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: (selectedColorBg || "").includes('#F5F0E8') ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.4)", marginTop: 4 }}>{tapeInfo.year}</div>
+              </div>
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 40%)", pointerEvents: "none" }} />
+            </div>
+            {/* Color picker */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 14 }}>
+              {COVER_COLORS.map((c, i) => (
+                <button key={i} onClick={() => setSelectedColorBg(c.bg)}
+                  style={{ width: 32, height: 32, borderRadius: 6, border: selectedColorBg === c.bg ? `2px solid ${C.gold}` : "2px solid transparent",
+                    background: c.bg, cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }} />
               ))}
-              <input type="range" min="1" max="12" value={brushSize} onChange={e => setBrushSize(Number(e.target.value))}
-                style={{ width: 60, marginLeft: 6 }} />
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={saveCanvas} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>保存手绘</button>
-              <button onClick={clearCanvas} style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>清除</button>
-              <button onClick={() => setDrawMode(false)} style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>取消</button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => fileRef.current?.click()} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#fff" strokeWidth="2"/><path d="M12 8v8M8 12h8" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
-              选择封面图
+            <button onClick={saveTemplate} style={{ width: "100%", padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>
+              应用此封面
             </button>
-            <button onClick={() => setDrawMode(true)} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.teal, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke="#fff" strokeWidth="2"/></svg>
-              手绘涂鸦
-            </button>
-            {coverImg && <button onClick={() => onSetCover(null)} style={{ padding: "10px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>移除</button>}
           </div>
         )}
+
+        {/* ===== TAB: Photo — upload image ===== */}
+        {tab === "photo" && (
+          <div>
+            {/* Preview */}
+            <div style={{ width: 160, height: 210, margin: "0 auto 14px", borderRadius: "2px 6px 6px 2px", overflow: "hidden", position: "relative",
+              background: C.cream, boxShadow: "4px 4px 16px rgba(0,0,0,0.3)" }}>
+              {coverImg ? (
+                <img src={coverImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 6 }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke={C.lbrown} strokeWidth="1.5"/><path d="M12 8v8M8 12h8" stroke={C.lbrown} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.lbrown }}>选择图片</span>
+                </div>
+              )}
+              <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 8, background: "linear-gradient(90deg, rgba(0,0,0,0.25), rgba(0,0,0,0.08), rgba(255,255,255,0.05))" }} />
+              <div style={{ position: "absolute", right: 0, top: 4, bottom: 4, width: 4, background: "repeating-linear-gradient(180deg, #f5f0e8 0px, #f5f0e8 1px, #e8e2d8 1px, #e8e2d8 2px)", borderRadius: "0 2px 2px 0" }} />
+              {coverImg && <div style={{ position: "absolute", bottom: 6, left: 10, right: 6, textAlign: "center" }}>
+                <span style={{ fontFamily: "'Caveat',cursive", fontSize: 12, color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.7)" }}>{tapeInfo.month}</span>
+              </div>}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => fileRef.current?.click()} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>选择图片</button>
+              {coverImg && <button onClick={() => onSetCover(null)} style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>移除</button>}
+            </div>
+          </div>
+        )}
+
+        {/* ===== TAB: Draw — canvas + stickers + emoji ===== */}
+        {tab === "draw" && (
+          <div>
+            {/* Canvas area */}
+            <div style={{ position: "relative", width: "100%", height: 380, borderRadius: 8, overflow: "hidden", background: C.cream, border: "1px solid rgba(0,0,0,0.06)", marginBottom: 10 }}>
+              {drawMode ? (<>
+                <canvas ref={canvasRef} width={300} height={400}
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", touchAction: "none", cursor: stickerMode ? "copy" : "crosshair" }}
+                  onMouseDown={stickerMode ? handleCanvasTap : startDraw} onMouseMove={moveDraw} onMouseUp={endDraw} onMouseLeave={endDraw}
+                  onTouchStart={stickerMode ? handleCanvasTap : startDraw} onTouchMove={moveDraw} onTouchEnd={endDraw} />
+                {/* Stickers overlay (visual only, they get baked into canvas on save) */}
+                {placedStickers.map((s, i) => (
+                  <div key={i} style={{ position: "absolute", left: `${(s.x/300)*100}%`, top: `${(s.y/400)*100}%`, fontSize: 24, transform: "translate(-50%, -50%)", pointerEvents: "none" }}>{s.emoji}</div>
+                ))}
+              </>) : (
+                <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  {drawingImg ? (
+                    <img src={drawingImg} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                  ) : (
+                    <>
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke={C.lbrown} strokeWidth="1.5"/></svg>
+                      <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: C.lbrown }}>开始创作</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {drawMode ? (<>
+              {/* Tool switcher: brush / sticker */}
+              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                <button onClick={() => setStickerMode(false)} style={{ flex: 1, padding: 6, borderRadius: 6, border: "none", cursor: "pointer", background: !stickerMode ? C.teal : "rgba(0,0,0,0.04)", color: !stickerMode ? "#fff" : C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, fontWeight: 600 }}>🖌️ 画笔</button>
+                <button onClick={() => setStickerMode(true)} style={{ flex: 1, padding: 6, borderRadius: 6, border: "none", cursor: "pointer", background: stickerMode ? C.orange : "rgba(0,0,0,0.04)", color: stickerMode ? "#fff" : C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, fontWeight: 600 }}>🎨 贴纸</button>
+              </div>
+
+              {!stickerMode ? (
+                /* Brush colors + size */
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 10, flexWrap: "wrap" }}>
+                  {brushColors.map(c => (
+                    <button key={c} onClick={() => setBrushColor(c)} style={{
+                      width: 22, height: 22, borderRadius: "50%", border: brushColor === c ? `2px solid ${C.gold}` : "2px solid transparent",
+                      background: c, cursor: "pointer", boxShadow: c === "#fff" ? "inset 0 0 0 1px rgba(0,0,0,0.15)" : "none",
+                    }} />
+                  ))}
+                  <input type="range" min="1" max="12" value={brushSize} onChange={e => setBrushSize(Number(e.target.value))} style={{ width: 50, marginLeft: 4 }} />
+                </div>
+              ) : (
+                /* Sticker/Emoji picker */
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10, maxHeight: 100, overflow: "auto", padding: 4, background: "rgba(0,0,0,0.02)", borderRadius: 6 }}>
+                  {STICKERS.map((s, i) => (
+                    <button key={i} onClick={() => setBrushColor(s)}
+                      style={{ width: 32, height: 32, borderRadius: 6, border: brushColor === s ? `2px solid ${C.orange}` : "2px solid transparent",
+                        background: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={saveCanvas} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>保存</button>
+                <button onClick={clearCanvas} style={{ padding: "10px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>清除</button>
+                <button onClick={() => { setDrawMode(false); setStickerMode(false); setPlacedStickers([]); }} style={{ padding: "10px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>取消</button>
+              </div>
+            </>) : (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setDrawMode(true)} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.teal, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>{drawingImg ? "继续创作" : "开始手绘"}</button>
+                {drawingImg && <button onClick={() => onSaveDrawing(null)} style={{ padding: "10px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>移除</button>}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Reset to tape */}
+        {(coverImg || drawingImg) && (
+          <button onClick={() => { onSetCover(null); onSaveDrawing(null); }}
+            style={{ width: "100%", marginTop: 10, padding: 8, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.04)", color: C.lbrown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>
+            恢复为磁带样式
+          </button>
+        )}
+
         <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
       </div>
     </div>
