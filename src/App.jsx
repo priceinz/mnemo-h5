@@ -285,7 +285,7 @@ const CalendarMonth = ({ year, month, monthLabel, entries, onBack, onDayClick })
 /* ================================================================
    DIARY DETAIL VIEW — view / edit / add images
    ================================================================ */
-const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onDelete }) => {
+const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onDelete, imgInputRef, onImageUpload }) => {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(entry?.title || "");
   const [text, setText] = useState(entry?.text || "");
@@ -311,8 +311,12 @@ const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onD
             <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: C.dark, margin: 0 }}>{entry.title}</h3>
           )}
           {entry.img && (
-            <div style={{ width: "100%", height: 140, borderRadius: 8, overflow: "hidden", background: `linear-gradient(135deg, ${C.warm}, ${C.cream})`, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(0,0,0,0.06)" }}>
-              <div style={{ fontSize: 48 }}>{entry.img}</div>
+            <div style={{ width: "100%", height: 160, borderRadius: 8, overflow: "hidden", border: "1px solid rgba(0,0,0,0.06)" }}>
+              {entry.img.startsWith('data:') ? (
+                <img src={entry.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${C.warm}, ${C.cream})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 }}>{entry.img}</div>
+              )}
             </div>
           )}
           {editing ? (
@@ -328,7 +332,7 @@ const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onD
               <button onClick={() => setEditing(true)} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke={C.brown} strokeWidth="2"/></svg>编辑
               </button>
-              <button style={{ padding: "10px 16px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <button onClick={() => imgInputRef?.current?.click()} style={{ padding: "10px 16px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke={C.brown} strokeWidth="2"/><path d="M12 8v8M8 12h8" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>添加图片
               </button>
               {onDelete && <button onClick={() => { if (confirm("确定删除这篇日记？")) { onDelete(); onBack(); } }} style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
@@ -394,75 +398,74 @@ export default function App() {
   const [t, setT] = useState(0);
   const [transcribing, setTranscribing] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [dv, setDv] = useState("shelf");
-  const [sm, setSm] = useState(null); // { year, month } for calendar
+  const [dv, setDv] = useState("today"); // "today" | "shelf" | "month" | "detail"
+  const [sm, setSm] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedDateKey, setSelectedDateKey] = useState(null);
   const iv = useRef(null);
 
-  // Diary entries keyed by "YYYY-MM-DD"
-  const [diaryEntries, setDiaryEntries] = useState({
-    "2026-03-22": { title: "春天来了", text: "今天阳光很好，出去散了步。", img: "🌸" },
-    "2026-03-18": { title: "项目进展", text: "完成了第一版设计稿，反馈积极。", img: "💻" },
-    "2026-03-12": { title: "周末野餐", text: "和朋友去了公园，带了三明治和咖啡。", img: "🌳" },
-    "2026-02-14": { title: "情人节", text: "收到了意外的惊喜。", img: "💝" },
-    "2026-02-05": { title: "读完了一本书", text: "关于设计思维的书，收获很多。", img: "📖" },
-    "2026-01-25": { title: "生日快乐", text: "收到了很多祝福，蛋糕是提拉米苏。", img: "🎂" },
-    "2026-01-18": { title: "项目启动", text: "新项目正式开始了，很期待。", img: null },
-    "2026-01-05": { title: "年度计划", text: "定下了今年的目标和计划。", img: "📋" },
-    "2026-01-01": { title: "新年第一天", text: "新的开始，希望一切顺利。", img: "🎆" },
-    "2025-12-25": { title: "圣诞节", text: "和家人一起度过了温暖的一天。", img: "🎄" },
-    "2025-11-20": { title: "秋日记录", text: "落叶很美，拍了很多照片。", img: "🍂" },
-  });
+  // === localStorage helpers ===
+  const lsGet = (key, fallback) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; } };
+  const lsSet = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { console.error('Storage error:', e); } };
 
-  const [todos, setTodos] = useState([
-    { text: "完成语音日记 App 设计稿", done: false, date: "2026-03-23" },
-    { text: "提交产品文档", done: false, date: "2026-03-23" },
-    { text: "买咖啡豆", done: true, date: "2026-03-22" },
-    { text: "回复客户邮件", done: true, date: "2026-03-22" },
-    { text: "整理会议录音", done: false, date: "2026-03-22" },
-    { text: "周五前提交报告", done: false, date: "2026-03-20" },
-    { text: "预约牙医", done: true, date: "2026-03-20" },
-    { text: "给妈妈打电话", done: true, date: "2026-03-18" },
-    { text: "更新项目排期", done: false, date: "2026-03-18" },
-    { text: "写周报", done: true, date: "2026-03-15" },
-    { text: "整理书桌", done: true, date: "2026-03-12" },
-    { text: "买生日礼物", done: true, date: "2026-03-10" },
-    { text: "准备演示 PPT", done: false, date: "2026-03-08" },
-    { text: "修复登录 Bug", done: true, date: "2026-03-08" },
-    { text: "健身一小时", done: true, date: "2026-03-05" },
-    { text: "读完设计书第三章", done: false, date: "2026-03-03" },
-    { text: "确认合同细节", done: true, date: "2026-03-01" },
-    { text: "更新简历", done: true, date: "2026-02-20" },
-    { text: "准备年会材料", done: false, date: "2026-02-15" },
-    { text: "年度计划制定", done: true, date: "2026-01-05" },
-  ]);
-  const [todoView, setTodoView] = useState("list"); // list | calendar | day
-  const [todoCalMonth, setTodoCalMonth] = useState(2); // 0-indexed, default March
-  const [todoCalYear, setTodoCalYear] = useState(2026);
-  const [todoSelDay, setTodoSelDay] = useState(null); // "YYYY-MM-DD"
-  const [newTodoText, setNewTodoText] = useState("");
-
-  const allIdeas = [
+  // === Sample data (only used on first ever load) ===
+  const sampleDiary = {
+    "2026-03-22": { title: "春天来了", text: "今天阳光很好，出去散了步。", img: null },
+    "2026-03-18": { title: "项目进展", text: "完成了第一版设计稿，反馈积极。", img: null },
+    "2026-01-01": { title: "新年第一天", text: "新的开始，希望一切顺利。", img: null },
+  };
+  const sampleTodos = [
+    { text: "完成语音日记 App 设计稿", done: false, date: "2026-03-24", time: "" },
+    { text: "买咖啡豆", done: true, date: "2026-03-22", time: "" },
+  ];
+  const sampleIdeas = [
     { text: "做一个复古风格的音乐播放器", date: "03.22", month: "2026-03", color: "#FFF9C4", rotation: -2 },
     { text: "咖啡馆里听到的旋律很美", date: "03.20", month: "2026-03", color: "#FFE0B2", rotation: 1.5 },
     { text: "用声音记录梦境", date: "03.18", month: "2026-03", color: "#C8E6C9", rotation: -1 },
-    { text: "播客idea：声音工作者", date: "03.15", month: "2026-03", color: "#BBDEFB", rotation: 2 },
     { text: "Braun T3 设计语言", date: "02.12", month: "2026-02", color: "#F8BBD0", rotation: -1.5 },
-    { text: "AI整理语音笔记", date: "02.10", month: "2026-02", color: "#E1BEE7", rotation: 1 },
-    { text: "开一个设计播客", date: "01.20", month: "2026-01", color: "#B2DFDB", rotation: -2 },
-    { text: "复古家具改造计划", date: "01.08", month: "2026-01", color: "#FFCCBC", rotation: 1.5 },
   ];
+  const sampleMeetings = [
+    { id: 1, title: "Q1 项目复盘会", date: "03.22", duration: "45:20", hasMinutes: true, minutes: "1. 确认下阶段目标和排期\n2. 设计方案需周五前定稿", transcript: "" },
+    { id: 2, title: "团队周会", date: "03.15", duration: "28:40", hasMinutes: false, minutes: "", transcript: "" },
+  ];
+
+  // === State from localStorage ===
+  const [diaryEntries, setDiaryEntries] = useState(() => lsGet('mnemo_diary', sampleDiary));
+  const [todos, setTodos] = useState(() => lsGet('mnemo_todos', sampleTodos));
+  const [allIdeas, setAllIdeas] = useState(() => lsGet('mnemo_ideas', sampleIdeas));
+  const [meetings, setMeetings] = useState(() => lsGet('mnemo_meetings', sampleMeetings));
+  const [trash, setTrash] = useState(() => lsGet('mnemo_trash', []));
+
+  // === Auto-save to localStorage on any change ===
+  useEffect(() => { lsSet('mnemo_diary', diaryEntries); }, [diaryEntries]);
+  useEffect(() => { lsSet('mnemo_todos', todos); }, [todos]);
+  useEffect(() => { lsSet('mnemo_ideas', allIdeas); }, [allIdeas]);
+  useEffect(() => { lsSet('mnemo_meetings', meetings); }, [meetings]);
+  useEffect(() => { lsSet('mnemo_trash', trash); }, [trash]);
+
+  // === Recycle bin: auto-cleanup items older than 30 days ===
+  useEffect(() => {
+    const now = Date.now();
+    const cleaned = trash.filter(item => now - item.deletedAt < 30 * 24 * 60 * 60 * 1000);
+    if (cleaned.length !== trash.length) setTrash(cleaned);
+  }, []);
+
+  // === Trash helper: move to recycle bin ===
+  const moveToTrash = (type, data) => {
+    setTrash(prev => [...prev, { type, data, deletedAt: Date.now(), id: Date.now() + Math.random() }]);
+  };
+
+  const [todoView, setTodoView] = useState("list");
+  const [todoCalMonth, setTodoCalMonth] = useState(new Date().getMonth());
+  const [todoCalYear, setTodoCalYear] = useState(new Date().getFullYear());
+  const [todoSelDay, setTodoSelDay] = useState(null);
+  const [newTodoText, setNewTodoText] = useState("");
+
   const [ideaSelected, setIdeaSelected] = useState([]);
   const [ideaAIMode, setIdeaAIMode] = useState(false);
   const [ideaAIPrompt, setIdeaAIPrompt] = useState("");
   const [ideaAIResult, setIdeaAIResult] = useState("");
 
-  const [meetings, setMeetings] = useState([
-    { id: 1, title: "Q1 项目复盘会", date: "03.22", duration: "45:20", hasMinutes: true, minutes: "1. 确认下阶段目标和排期\n2. 设计方案需周五前定稿\n3. 待办：@张三 完成用户调研\n4. 技术栈选型讨论延期到下周" },
-    { id: 2, title: "产品需求评审", date: "03.18", duration: "32:15", hasMinutes: true, minutes: "1. V2.0 新增会议录音功能\n2. 灵感模块接入 AI 合成\n3. 优先级：P0 录音核心流程" },
-    { id: 3, title: "团队周会", date: "03.15", duration: "28:40", hasMinutes: false, minutes: "" },
-  ]);
   const [meetingDetail, setMeetingDetail] = useState(null);
   const [aiGenerating, setAiGenerating] = useState(false);
 
@@ -574,22 +577,49 @@ export default function App() {
     setShowSave(true);
   };
 
-  const doSave = x => {
-    // Save transcript to the target module
+  const doSave = async (x) => {
     const now = new Date().toISOString().slice(0, 10);
-    if (x === "diary" && transcript) {
-      setDiaryEntries(prev => ({ ...prev, [now]: { title: transcript.slice(0, 20) + "...", text: transcript, img: null } }));
-    } else if (x === "todo" && transcript) {
-      setTodos(prev => [{ text: transcript, done: false, date: now }, ...prev]);
-    } else if (x === "meeting" && transcript) {
+    if (x === "diary" && transcript.trim()) {
+      setDiaryEntries(prev => ({ ...prev, [now]: { title: transcript.trim().slice(0, 20), text: transcript.trim(), img: null } }));
+    } else if (x === "todo" && transcript.trim()) {
+      // Use AI to intelligently split voice into multiple todos
+      try {
+        const res = await fetch('/api/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'todo_parse',
+            content: { text: transcript.trim() },
+            prompt: '请把以下语音内容拆分成独立的待办事项，每条一行，只输出待办内容，不要序号不要多余文字。如果提到了时间请保留在文字里。如果只有一条就输出一条。\n\n语音内容：' + transcript.trim()
+          }),
+        });
+        const data = await res.json();
+        if (data.result) {
+          const items = data.result.split('\n').map(s => s.trim()).filter(s => s && s.length > 1);
+          const newTodos = items.map(text => ({ text, done: false, date: now, time: "" }));
+          setTodos(prev => [...newTodos, ...prev]);
+        } else {
+          setTodos(prev => [{ text: transcript.trim(), done: false, date: now, time: "" }, ...prev]);
+        }
+      } catch {
+        // AI 失败则整条保存
+        setTodos(prev => [{ text: transcript.trim(), done: false, date: now, time: "" }, ...prev]);
+      }
+    } else if (x === "idea" && transcript.trim()) {
+      const colors = ["#FFF9C4", "#FFE0B2", "#C8E6C9", "#BBDEFB", "#F8BBD0", "#E1BEE7", "#B2DFDB", "#FFCCBC"];
+      const rots = [-2, 1.5, -1, 2, -1.5, 1, -2, 1.5];
+      const idx = allIdeas.length % colors.length;
+      const mm = now.slice(5, 7);
+      setAllIdeas(prev => [{ text: transcript.trim(), date: now.slice(5).replace('-', '.'), month: now.slice(0, 7), color: colors[idx], rotation: rots[idx] }, ...prev]);
+    } else if (x === "meeting" && transcript.trim()) {
       const newId = Date.now();
-      setMeetings(prev => [{ id: newId, title: transcript.slice(0, 15) + "...", date: now.slice(5).replace('-', '.'), duration: fm(t), hasMinutes: false, minutes: "", transcript }, ...prev]);
+      setMeetings(prev => [{ id: newId, title: transcript.trim().slice(0, 15) + "...", date: now.slice(5).replace('-', '.'), duration: fm(t), hasMinutes: false, minutes: "", transcript: transcript.trim() }, ...prev]);
     }
     setShowSave(false); setT(0); setTranscript(""); setTab(x);
   };
   const rst = () => { setRec(false); setPaused(false); setShowSave(false); setT(0); setTranscript(""); setTranscribing(false); if (speechRec.current) { try { speechRec.current.stop(); } catch(e){} speechRec.current = null; } liveTranscript.current = ""; };
   const handleTab = (key) => setTab(key);
-  const goHome = () => { setTab("record"); rst(); setDv("shelf"); setSm(null); setSelectedDay(null); setSelectedDateKey(null); };
+  const goHome = () => { setTab("record"); rst(); setDv("today"); setSm(null); setSelectedDay(null); setSelectedDateKey(null); };
   const GS = 250;
 
   const SubHeader = ({ title, search, setSearch }) => {
@@ -703,19 +733,42 @@ export default function App() {
   );
 
   /* ===== DIARY ===== */
+  const imgInputRef = useRef(null);
+
+  const handleImageUpload = (e, dateKey) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setDiaryEntries(prev => ({
+        ...prev,
+        [dateKey]: { ...prev[dateKey], img: reader.result }
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const pgDiary = () => {
-    // Level 4: Day detail
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const todayEntry = diaryEntries[todayKey];
+    const monthNames = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
+
+    // Level: Day detail (from calendar click)
     if (dv === "detail" && selectedDay && sm) {
       return <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <DiaryDetail dayNum={selectedDay} dateKey={selectedDateKey} monthLabel={`${sm.month} ${sm.year}`}
           entry={diaryEntries[selectedDateKey]}
           onBack={() => { setDv("month"); setSelectedDay(null); setSelectedDateKey(null); }}
           onUpdate={(updated) => { setDiaryEntries(prev => ({ ...prev, [selectedDateKey]: updated })); }}
-          onDelete={() => { setDiaryEntries(prev => { const n = { ...prev }; delete n[selectedDateKey]; return n; }); }}
+          onDelete={() => { moveToTrash('diary', { key: selectedDateKey, ...diaryEntries[selectedDateKey] }); setDiaryEntries(prev => { const n = { ...prev }; delete n[selectedDateKey]; return n; }); }}
+          imgInputRef={imgInputRef}
+          onImageUpload={(e) => handleImageUpload(e, selectedDateKey)}
         />
+        <input ref={imgInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleImageUpload(e, selectedDateKey)} />
       </div>;
     }
-    // Level 3: Calendar month
+
+    // Level: Calendar month
     if (dv === "month" && sm) {
       return <CalendarMonth year={sm.year} month={sm.month} monthLabel={`${sm.year}年${sm.month}`}
         entries={diaryEntries}
@@ -723,17 +776,81 @@ export default function App() {
         onDayClick={(day, key) => { setSelectedDay(day); setSelectedDateKey(key); setDv("detail"); }}
       />;
     }
-    // Level 1-2: Shelf
-    const shelves = [
-      { y: "2026", t: [{ label: "Mar", month: "三月", color: "clear" }, { label: "Feb", month: "二月", color: "smoke" }, { label: "Jan", month: "一月", color: "amber" }] },
-      { y: "2025", t: [{ label: "Dec", month: "十二月", color: "dark" }, { label: "Nov", month: "十一月", color: "olive" }, { label: "Oct", month: "十月", color: "clear" }, { label: "Sep", month: "九月", color: "smoke" }, { label: "Aug", month: "八月", color: "amber" }] },
-    ];
-    const q = searchDiary.toLowerCase();
-    const filtered = q ? shelves.map(s => ({ ...s, t: s.t.filter(t => t.month.includes(q) || t.label.toLowerCase().includes(q) || s.y.includes(q)) })).filter(s => s.t.length > 0) : shelves;
-    return <div style={{ flex: 1, padding: "0 12px" }}>
-      <SubHeader title="日记书架" search={searchDiary} setSearch={setSearchDiary} />
-      {filtered.length === 0 && q && <div style={{ textAlign: "center", padding: 30, fontFamily: "'Caveat',cursive", fontSize: 16, color: C.lbrown }}>没有找到「{searchDiary}」相关的日记</div>}
-      {filtered.map((s, i) => <ShelfRow key={i} year={s.y} tapes={s.t} onTap={x => { setDv("month"); setSm({ year: s.y, month: x.month }); }} />)}
+
+    // Level: Shelf
+    if (dv === "shelf") {
+      const shelves = [
+        { y: "2026", t: [{ label: "Mar", month: "三月", color: "clear" }, { label: "Feb", month: "二月", color: "smoke" }, { label: "Jan", month: "一月", color: "amber" }] },
+        { y: "2025", t: [{ label: "Dec", month: "十二月", color: "dark" }, { label: "Nov", month: "十一月", color: "olive" }, { label: "Oct", month: "十月", color: "clear" }, { label: "Sep", month: "九月", color: "smoke" }, { label: "Aug", month: "八月", color: "amber" }] },
+      ];
+      const q = searchDiary.toLowerCase();
+      const filtered = q ? shelves.map(s => ({ ...s, t: s.t.filter(t => t.month.includes(q) || t.label.toLowerCase().includes(q) || s.y.includes(q)) })).filter(s => s.t.length > 0) : shelves;
+      return <div style={{ flex: 1, padding: "0 12px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 8px 14px" }}>
+          <button onClick={() => setDv("today")} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: C.brown }}>← 今日</button>
+          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 600, color: C.dark, margin: 0 }}>日记书架</h2>
+          <div style={{ width: 40 }} />
+        </div>
+        {filtered.length === 0 && q && <div style={{ textAlign: "center", padding: 30, fontFamily: "'Lora',serif", fontSize: 14, color: C.lbrown }}>没有找到相关日记</div>}
+        {filtered.map((s, i) => <ShelfRow key={i} year={s.y} tapes={s.t} onTap={x => { setDv("month"); setSm({ year: s.y, month: x.month }); }} />)}
+      </div>;
+    }
+
+    // Level: TODAY (default) — show today's diary with quick edit
+    const todayDate = new Date();
+    const dayNum = todayDate.getDate();
+    const monthLabel = monthNames[todayDate.getMonth()];
+
+    return <div style={{ flex: 1, padding: "0 14px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 0 14px" }}>
+        <button onClick={goHome} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", alignItems: "center", gap: 4 }}>
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#DD2020", boxShadow: "0 1px 3px rgba(150,15,15,0.3)" }} />
+          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: C.brown }}>REC</span>
+        </button>
+        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 600, color: C.dark, margin: 0 }}>今日日记</h2>
+        <button onClick={() => setDv("shelf")} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.gold, fontWeight: 600 }}>书架 ›</button>
+      </div>
+
+      {/* Date display */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 16 }}>
+        <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 42, fontWeight: 700, color: C.dark, lineHeight: 1 }}>{dayNum}</span>
+        <span style={{ fontFamily: "'Lora',serif", fontSize: 16, color: C.brown }}>{monthLabel} {todayDate.getFullYear()}</span>
+      </div>
+
+      {todayEntry ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: C.dark, margin: 0 }}>{todayEntry.title}</h3>
+          {todayEntry.img && (
+            <div style={{ width: "100%", height: 160, borderRadius: 8, overflow: "hidden", border: "1px solid rgba(0,0,0,0.06)" }}>
+              <img src={todayEntry.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            </div>
+          )}
+          <p style={{ fontFamily: "'Lora',serif", fontSize: 14, color: C.dark, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>{todayEntry.text}</p>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button onClick={() => { setSelectedDay(dayNum); setSelectedDateKey(todayKey); setDv("detail"); const m = monthNames[todayDate.getMonth()]; setSm({ year: String(todayDate.getFullYear()), month: m }); }}
+              style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>
+              编辑
+            </button>
+            <button onClick={() => imgInputRef.current?.click()}
+              style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>
+              添加图片
+            </button>
+          </div>
+          <input ref={imgInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleImageUpload(e, todayKey)} />
+        </div>
+      ) : (
+        <div style={{ textAlign: "center", padding: "40px 0" }}>
+          <div style={{ fontFamily: "'Lora',serif", fontSize: 15, color: C.lbrown, marginBottom: 14 }}>今天还没有写日记</div>
+          <button onClick={() => {
+            setDiaryEntries(prev => ({ ...prev, [todayKey]: { title: "今天的记录", text: "", img: null } }));
+            setSelectedDay(dayNum); setSelectedDateKey(todayKey); setDv("detail");
+            const m = monthNames[todayDate.getMonth()]; setSm({ year: String(todayDate.getFullYear()), month: m });
+          }}
+            style={{ padding: "12px 24px", borderRadius: 8, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, boxShadow: "0 3px 10px rgba(200,160,96,0.3)" }}>
+            开始写日记
+          </button>
+        </div>
+      )}
     </div>;
   };
 
@@ -750,7 +867,7 @@ export default function App() {
         <SubHeader title="待办事项" search={searchTodo} setSearch={setSearchTodo} />
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.brown, letterSpacing: "0.1em", marginBottom: 10 }}>找到 {results.length} 条结果</div>
         {results.length === 0 && <div style={{ textAlign: "center", padding: 30, fontFamily: "'Caveat',cursive", fontSize: 16, color: C.lbrown }}>没有找到「{searchTodo}」相关的待办</div>}
-        {results.map((x, i) => <TodoRow key={i} text={x.text} done={x.done} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: !x.done }; setTodos(n); }} onDelete={() => setTodos(todos.filter(t => t !== x))} />)}
+        {results.map((x, i) => <TodoRow key={i} text={x.text} done={x.done} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: !x.done }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
       </div>;
     }
 
@@ -768,9 +885,9 @@ export default function App() {
         </div>
         {dayItems.length === 0 && <div style={{ textAlign: "center", padding: 30, fontFamily: "'Caveat',cursive", fontSize: 16, color: C.lbrown }}>这一天没有待办</div>}
         {dayItems.filter(x => !x.done).length > 0 && <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.brown, letterSpacing: "0.15em", marginBottom: 8 }}>待完成</div>}
-        {dayItems.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onDelete={() => setTodos(todos.filter(t => t !== x))} />)}
+        {dayItems.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
         {dayItems.filter(x => x.done).length > 0 && <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.lbrown, letterSpacing: "0.15em", marginBottom: 8, marginTop: 12 }}>已完成</div>}
-        {dayItems.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onDelete={() => setTodos(todos.filter(t => t !== x))} />)}
+        {dayItems.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
       </div>;
     }
 
@@ -900,13 +1017,13 @@ export default function App() {
       {/* Pending */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.brown, letterSpacing: "0.15em", marginBottom: 8 }}>待完成 ({todos.filter(x => !x.done).length})</div>
-        {todos.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onDelete={() => setTodos(todos.filter(t => t !== x))} />)}
+        {todos.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
       </div>
 
       {/* Done */}
       <div>
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.lbrown, letterSpacing: "0.15em", marginBottom: 8 }}>已完成 ({todos.filter(x => x.done).length})</div>
-        {todos.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onDelete={() => setTodos(todos.filter(t => t !== x))} />)}
+        {todos.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
       </div>
     </div>;
   };
@@ -1043,7 +1160,7 @@ export default function App() {
           </div>
         )}
         {/* Delete meeting */}
-        <button onClick={() => { if (confirm("确定删除此会议录音？")) { setMeetings(prev => prev.filter(x => x.id !== meetingDetail)); setMeetingDetail(null); } }}
+        <button onClick={() => { if (confirm("确定删除此会议录音？")) { const m = meetings.find(x => x.id === meetingDetail); moveToTrash('meeting', m); setMeetings(prev => prev.filter(x => x.id !== meetingDetail)); setMeetingDetail(null); } }}
           style={{ marginTop: 16, padding: "10px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.06)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="#A03030" strokeWidth="1.8" strokeLinecap="round"/></svg>删除会议
         </button>
