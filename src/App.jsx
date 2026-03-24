@@ -169,41 +169,80 @@ const AIIcon = ({ s = 16, c = C.orange }) => <svg width={s} height={s} viewBox="
 /* ================================================================
    STICKY NOTE (with selection support)
    ================================================================ */
-const Sticky = ({ text, date, color, rotation, selectable, selected, onSelect }) => (
-  <div onClick={selectable ? onSelect : undefined} style={{
-    width: "calc(50% - 8px)", minHeight: 105, padding: 12, background: color, borderRadius: 2,
-    boxShadow: selected ? `0 0 0 2px ${C.orange}, 2px 3px 8px rgba(0,0,0,0.15)` : "2px 3px 8px rgba(0,0,0,0.1)",
-    transform: `rotate(${selected ? 0 : rotation}deg)${selected ? " scale(1.03)" : ""}`,
-    display: "flex", flexDirection: "column", justifyContent: "space-between",
-    transition: "all 0.2s", cursor: selectable ? "pointer" : "default", position: "relative",
-  }}
-    onMouseEnter={e => { if (!selectable) e.currentTarget.style.transform = "rotate(0deg) scale(1.04)"; }}
-    onMouseLeave={e => { if (!selectable && !selected) e.currentTarget.style.transform = `rotate(${rotation}deg) scale(1)`; }}>
-    {selectable && (
-      <div style={{ position: "absolute", top: 6, right: 6, width: 18, height: 18, borderRadius: 3, border: `2px solid ${selected ? C.orange : "rgba(0,0,0,0.15)"}`, background: selected ? C.orange : "rgba(255,255,255,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {selected && <svg width="10" height="10" viewBox="0 0 24 24"><path d="M5 12l5 5L19 7" stroke="#fff" strokeWidth="3" fill="none" /></svg>}
-      </div>
-    )}
-    <p style={{ fontFamily: "'Caveat',cursive", fontSize: 14, color: C.dark, lineHeight: 1.4, margin: 0 }}>{text}</p>
-    <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: C.brown, alignSelf: "flex-end", marginTop: 6 }}>{date}</span>
-  </div>
-);
+const Sticky = ({ text, date, color, rotation, selectable, selected, onSelect, onEdit, onDelete }) => {
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(text);
+  const save = () => { if (editText.trim() && onEdit) { onEdit(editText.trim()); } setEditing(false); };
+  return (
+    <div onClick={selectable ? onSelect : undefined} style={{
+      width: "calc(50% - 8px)", minHeight: 105, padding: 12, background: color, borderRadius: 2,
+      boxShadow: selected ? `0 0 0 2px ${C.orange}, 2px 3px 8px rgba(0,0,0,0.15)` : "2px 3px 8px rgba(0,0,0,0.1)",
+      transform: `rotate(${selected ? 0 : rotation}deg)${selected ? " scale(1.03)" : ""}`,
+      display: "flex", flexDirection: "column", justifyContent: "space-between",
+      transition: "all 0.2s", cursor: selectable ? "pointer" : "default", position: "relative",
+    }}
+      onMouseEnter={e => { if (!selectable) e.currentTarget.style.transform = "rotate(0deg) scale(1.04)"; }}
+      onMouseLeave={e => { if (!selectable && !selected) e.currentTarget.style.transform = `rotate(${rotation}deg) scale(1)`; }}>
+      {/* AI mode checkbox */}
+      {selectable && (
+        <div style={{ position: "absolute", top: 6, right: 6, width: 18, height: 18, borderRadius: 3, border: `2px solid ${selected ? C.orange : "rgba(0,0,0,0.15)"}`, background: selected ? C.orange : "rgba(255,255,255,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {selected && <svg width="10" height="10" viewBox="0 0 24 24"><path d="M5 12l5 5L19 7" stroke="#fff" strokeWidth="3" fill="none" /></svg>}
+        </div>
+      )}
+      {/* Edit / Delete buttons — only in normal mode */}
+      {!selectable && (onEdit || onDelete) && (
+        <div style={{ position: "absolute", top: 5, right: 5, display: "flex", gap: 2 }}>
+          {onEdit && <button onClick={e => { e.stopPropagation(); setEditText(text); setEditing(true); }} style={{ background: "rgba(255,255,255,0.5)", border: "none", borderRadius: 3, width: 20, height: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke={C.brown} strokeWidth="2"/></svg>
+          </button>}
+          {onDelete && <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ background: "rgba(255,255,255,0.5)", border: "none", borderRadius: 3, width: 20, height: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>
+          </button>}
+        </div>
+      )}
+      {/* Content */}
+      {editing ? (
+        <textarea value={editText} onChange={e => setEditText(e.target.value)} onBlur={save} autoFocus
+          style={{ fontFamily: "'Caveat',cursive", fontSize: 14, color: C.dark, lineHeight: 1.4, margin: 0, background: "rgba(255,255,255,0.4)", border: "none", outline: "none", resize: "none", minHeight: 60, borderRadius: 2, padding: 4 }} />
+      ) : (
+        <p style={{ fontFamily: "'Caveat',cursive", fontSize: 14, color: C.dark, lineHeight: 1.4, margin: 0 }}>{text}</p>
+      )}
+      <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: C.brown, alignSelf: "flex-end", marginTop: 6 }}>{date}</span>
+    </div>
+  );
+};
 
-const TodoRow = ({ text, done, time, onToggle, onDelete }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: done ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.5)", borderRadius: 6, marginBottom: 6, border: "1px solid rgba(0,0,0,0.04)" }}>
-    <div onClick={onToggle} style={{ width: 22, height: 22, borderRadius: 4, flexShrink: 0, border: `2px solid ${done ? C.olive : C.brown}`, background: done ? C.olive : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-      {done && <svg width="14" height="14" viewBox="0 0 24 24"><path d="M5 12l5 5L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" fill="none" /></svg>}
+const TodoRow = ({ text, done, time, onToggle, onDelete, onEdit }) => {
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(text);
+  const save = () => { if (editText.trim() && onEdit) { onEdit(editText.trim()); } setEditing(false); };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: done ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.5)", borderRadius: 6, marginBottom: 6, border: editing ? `1px solid ${C.gold}` : "1px solid rgba(0,0,0,0.04)" }}>
+      <div onClick={onToggle} style={{ width: 22, height: 22, borderRadius: 4, flexShrink: 0, border: `2px solid ${done ? C.olive : C.brown}`, background: done ? C.olive : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        {done && <svg width="14" height="14" viewBox="0 0 24 24"><path d="M5 12l5 5L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" fill="none" /></svg>}
+      </div>
+      {editing ? (
+        <input value={editText} onChange={e => setEditText(e.target.value)} onBlur={save} onKeyDown={e => { if (e.key === 'Enter') save(); }}
+          autoFocus style={{ flex: 1, border: "none", background: "none", outline: "none", fontFamily: "'Lora',serif", fontSize: 15, color: C.dark, padding: 0 }} />
+      ) : (
+        <div onClick={onToggle} style={{ flex: 1, cursor: "pointer" }}>
+          <span style={{ fontFamily: "'Lora',serif", fontSize: 15, color: done ? C.lbrown : C.dark, textDecoration: done ? "line-through" : "none" }}>{text}</span>
+          {time && /^\d{1,2}:\d{2}$/.test(time) && <span style={{ marginLeft: 8, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.gold, background: "rgba(200,160,96,0.1)", padding: "1px 6px", borderRadius: 3 }}>⏰ {time}</span>}
+        </div>
+      )}
+      {/* Edit button */}
+      {!editing && onEdit && <button onClick={e => { e.stopPropagation(); setEditText(text); setEditing(true); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", opacity: 0.3, transition: "opacity 0.2s" }}
+        onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0.3}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke={C.brown} strokeWidth="1.8"/></svg>
+      </button>}
+      {/* Delete button */}
+      {onDelete && <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", opacity: 0.3, transition: "opacity 0.2s" }}
+        onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0.3}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>
+      </button>}
     </div>
-    <div onClick={onToggle} style={{ flex: 1, cursor: "pointer" }}>
-      <span style={{ fontFamily: "'Lora',serif", fontSize: 15, color: done ? C.lbrown : C.dark, textDecoration: done ? "line-through" : "none" }}>{text}</span>
-      {time && /^\d{1,2}:\d{2}$/.test(time) && <span style={{ marginLeft: 8, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.gold, background: "rgba(200,160,96,0.1)", padding: "1px 6px", borderRadius: 3 }}>⏰ {time}</span>}
-    </div>
-    {onDelete && <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", opacity: 0.4, transition: "opacity 0.2s" }}
-      onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0.4}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>
-    </button>}
-  </div>
-);
+  );
+};
 
 /* ================================================================
    CALENDAR MONTH VIEW — grid layout, no sidebar
@@ -959,7 +998,7 @@ export default function App() {
         <SubHeader title="待办事项" search={searchTodo} setSearch={setSearchTodo} />
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.brown, letterSpacing: "0.1em", marginBottom: 10 }}>找到 {results.length} 条结果</div>
         {results.length === 0 && <div style={{ textAlign: "center", padding: 30, fontFamily: "'Caveat',cursive", fontSize: 16, color: C.lbrown }}>没有找到「{searchTodo}」相关的待办</div>}
-        {results.map((x, i) => <TodoRow key={i} text={x.text} done={x.done} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: !x.done }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
+        {results.map((x, i) => <TodoRow key={i} text={x.text} done={x.done} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: !x.done }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} />)}
       </div>;
     }
 
@@ -977,9 +1016,9 @@ export default function App() {
         </div>
         {dayItems.length === 0 && <div style={{ textAlign: "center", padding: 30, fontFamily: "'Caveat',cursive", fontSize: 16, color: C.lbrown }}>这一天没有待办</div>}
         {dayItems.filter(x => !x.done).length > 0 && <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.brown, letterSpacing: "0.15em", marginBottom: 8 }}>待完成</div>}
-        {dayItems.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
+        {dayItems.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} />)}
         {dayItems.filter(x => x.done).length > 0 && <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.lbrown, letterSpacing: "0.15em", marginBottom: 8, marginTop: 12 }}>已完成</div>}
-        {dayItems.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
+        {dayItems.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} />)}
       </div>;
     }
 
@@ -1109,13 +1148,13 @@ export default function App() {
       {/* Pending */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.brown, letterSpacing: "0.15em", marginBottom: 8 }}>待完成 ({todos.filter(x => !x.done).length})</div>
-        {todos.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
+        {todos.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} />)}
       </div>
 
       {/* Done */}
       <div>
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.lbrown, letterSpacing: "0.15em", marginBottom: 8 }}>已完成 ({todos.filter(x => x.done).length})</div>
-        {todos.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
+        {todos.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} />)}
       </div>
     </div>;
   };
@@ -1165,7 +1204,10 @@ export default function App() {
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, paddingLeft: 18 }}>
             {grouped[month].map((idea, i) => {
               const gIdx = allIdeas.indexOf(idea);
-              return <Sticky key={i} {...idea} selectable={ideaAIMode} selected={ideaSelected.includes(gIdx)} onSelect={() => toggleSelect(gIdx)} />;
+              return <Sticky key={i} {...idea} selectable={ideaAIMode} selected={ideaSelected.includes(gIdx)} onSelect={() => toggleSelect(gIdx)}
+                onEdit={(newText) => { const updated = [...allIdeas]; updated[gIdx] = { ...updated[gIdx], text: newText }; setAllIdeas(updated); }}
+                onDelete={() => { moveToTrash('idea', allIdeas[gIdx]); setAllIdeas(prev => prev.filter((_, idx) => idx !== gIdx)); }}
+              />;
             })}
           </div>
         </div>
