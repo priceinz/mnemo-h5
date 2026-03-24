@@ -189,12 +189,15 @@ const Sticky = ({ text, date, color, rotation, selectable, selected, onSelect })
   </div>
 );
 
-const TodoRow = ({ text, done, onToggle, onDelete }) => (
+const TodoRow = ({ text, done, time, onToggle, onDelete }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: done ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.5)", borderRadius: 6, marginBottom: 6, border: "1px solid rgba(0,0,0,0.04)" }}>
     <div onClick={onToggle} style={{ width: 22, height: 22, borderRadius: 4, flexShrink: 0, border: `2px solid ${done ? C.olive : C.brown}`, background: done ? C.olive : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
       {done && <svg width="14" height="14" viewBox="0 0 24 24"><path d="M5 12l5 5L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" fill="none" /></svg>}
     </div>
-    <span onClick={onToggle} style={{ fontFamily: "'Lora',serif", fontSize: 15, color: done ? C.lbrown : C.dark, textDecoration: done ? "line-through" : "none", flex: 1, cursor: "pointer" }}>{text}</span>
+    <div onClick={onToggle} style={{ flex: 1, cursor: "pointer" }}>
+      <span style={{ fontFamily: "'Lora',serif", fontSize: 15, color: done ? C.lbrown : C.dark, textDecoration: done ? "line-through" : "none" }}>{text}</span>
+      {time && <span style={{ marginLeft: 8, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.gold, background: "rgba(200,160,96,0.1)", padding: "1px 6px", borderRadius: 3 }}>⏰ {time}</span>}
+    </div>
     {onDelete && <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", opacity: 0.4, transition: "opacity 0.2s" }}
       onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0.4}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>
@@ -577,12 +580,54 @@ export default function App() {
     setShowSave(true);
   };
 
+  // === Reminder system ===
+  const reminderTimers = useRef([]);
+
+  // Request notification permission on first load
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    // On load, reschedule reminders for today's todos with time
+    const today = new Date().toISOString().slice(0, 10);
+    todos.filter(t => !t.done && t.date === today && t.time).forEach(t => {
+      scheduleReminder(t.text, t.time, t.date);
+    });
+    return () => { reminderTimers.current.forEach(id => clearTimeout(id)); };
+  }, []);
+
+  const scheduleReminder = (text, time, date) => {
+    if (!time || !time.match(/^\d{1,2}:\d{2}$/)) return;
+    const [h, m] = time.split(':').map(Number);
+    const target = new Date(date + 'T00:00:00');
+    target.setHours(h, m, 0, 0);
+    // Remind 10 minutes early
+    const remindAt = target.getTime() - 10 * 60 * 1000;
+    const delay = remindAt - Date.now();
+    if (delay <= 0) return; // already past
+
+    const timerId = setTimeout(() => {
+      // Browser notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('MNEMO 待办提醒', {
+          body: `⏰ 10分钟后：${text}（${time}）`,
+          icon: '📋',
+          tag: 'mnemo-reminder-' + time,
+        });
+      }
+      // Also show alert as fallback (works in WeChat browser)
+      alert(`⏰ 待办提醒\n\n${text}\n\n将在 10 分钟后开始（${time}）`);
+    }, delay);
+
+    reminderTimers.current.push(timerId);
+  };
+
   const doSave = async (x) => {
     const now = new Date().toISOString().slice(0, 10);
     if (x === "diary" && transcript.trim()) {
       setDiaryEntries(prev => ({ ...prev, [now]: { title: transcript.trim().slice(0, 20), text: transcript.trim(), img: null } }));
     } else if (x === "todo" && transcript.trim()) {
-      // Use AI to intelligently split voice into multiple todos
+      // Use AI to intelligently extract todos — filter filler words, merge duplicates, extract time
       try {
         const res = await fetch('/api/ai', {
           method: 'POST',
@@ -590,19 +635,44 @@ export default function App() {
           body: JSON.stringify({
             type: 'todo_parse',
             content: { text: transcript.trim() },
-            prompt: '请把以下语音内容拆分成独立的待办事项，每条一行，只输出待办内容，不要序号不要多余文字。如果提到了时间请保留在文字里。如果只有一条就输出一条。\n\n语音内容：' + transcript.trim()
+            prompt: `你是语音待办助手。用户用语音说了一段话，请提取出真正的待办事项。
+
+规则：
+1. 过滤掉所有语气词（嗯、emm、额、那个、然后、就是等）
+2. 如果用户反复说同一件事（比如犹豫、纠正），只保留最终版本
+3. 合并重复内容，去重
+4. 每条待办精简到核心内容
+5. 如果提到时间（如3点、下午5点、明天上午），用"HH:MM"格式标注
+6. 输出格式：每行一条，格式为 "待办内容 | HH:MM"（没时间就不加 | 和时间）
+
+示例输入："emm 今天3点 今天下午3点有个会 emmm 还有就是 下午5点 下午5点有个会"
+示例输出：
+下午会议 | 15:00
+下午会议 | 17:00
+
+用户语音：${transcript.trim()}`
           }),
         });
         const data = await res.json();
         if (data.result) {
           const items = data.result.split('\n').map(s => s.trim()).filter(s => s && s.length > 1);
-          const newTodos = items.map(text => ({ text, done: false, date: now, time: "" }));
+          const newTodos = items.map(line => {
+            const parts = line.split('|').map(s => s.trim());
+            const text = parts[0].replace(/^[\d.、\-\s]+/, ''); // remove leading numbers
+            const time = parts[1] || "";
+            return { text: text || line, done: false, date: now, time };
+          });
           setTodos(prev => [...newTodos, ...prev]);
+          // Schedule reminders for todos with time
+          newTodos.forEach(todo => {
+            if (todo.time && todo.time.match(/^\d{1,2}:\d{2}$/)) {
+              scheduleReminder(todo.text, todo.time, now);
+            }
+          });
         } else {
           setTodos(prev => [{ text: transcript.trim(), done: false, date: now, time: "" }, ...prev]);
         }
       } catch {
-        // AI 失败则整条保存
         setTodos(prev => [{ text: transcript.trim(), done: false, date: now, time: "" }, ...prev]);
       }
     } else if (x === "idea" && transcript.trim()) {
@@ -867,7 +937,7 @@ export default function App() {
         <SubHeader title="待办事项" search={searchTodo} setSearch={setSearchTodo} />
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.brown, letterSpacing: "0.1em", marginBottom: 10 }}>找到 {results.length} 条结果</div>
         {results.length === 0 && <div style={{ textAlign: "center", padding: 30, fontFamily: "'Caveat',cursive", fontSize: 16, color: C.lbrown }}>没有找到「{searchTodo}」相关的待办</div>}
-        {results.map((x, i) => <TodoRow key={i} text={x.text} done={x.done} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: !x.done }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
+        {results.map((x, i) => <TodoRow key={i} text={x.text} done={x.done} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: !x.done }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
       </div>;
     }
 
@@ -885,9 +955,9 @@ export default function App() {
         </div>
         {dayItems.length === 0 && <div style={{ textAlign: "center", padding: 30, fontFamily: "'Caveat',cursive", fontSize: 16, color: C.lbrown }}>这一天没有待办</div>}
         {dayItems.filter(x => !x.done).length > 0 && <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.brown, letterSpacing: "0.15em", marginBottom: 8 }}>待完成</div>}
-        {dayItems.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
+        {dayItems.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
         {dayItems.filter(x => x.done).length > 0 && <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.lbrown, letterSpacing: "0.15em", marginBottom: 8, marginTop: 12 }}>已完成</div>}
-        {dayItems.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
+        {dayItems.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
       </div>;
     }
 
@@ -1017,13 +1087,13 @@ export default function App() {
       {/* Pending */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.brown, letterSpacing: "0.15em", marginBottom: 8 }}>待完成 ({todos.filter(x => !x.done).length})</div>
-        {todos.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
+        {todos.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
       </div>
 
       {/* Done */}
       <div>
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.lbrown, letterSpacing: "0.15em", marginBottom: 8 }}>已完成 ({todos.filter(x => x.done).length})</div>
-        {todos.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
+        {todos.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} />)}
       </div>
     </div>;
   };
