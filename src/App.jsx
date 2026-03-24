@@ -196,7 +196,7 @@ const TodoRow = ({ text, done, time, onToggle, onDelete }) => (
     </div>
     <div onClick={onToggle} style={{ flex: 1, cursor: "pointer" }}>
       <span style={{ fontFamily: "'Lora',serif", fontSize: 15, color: done ? C.lbrown : C.dark, textDecoration: done ? "line-through" : "none" }}>{text}</span>
-      {time && <span style={{ marginLeft: 8, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.gold, background: "rgba(200,160,96,0.1)", padding: "1px 6px", borderRadius: 3 }}>⏰ {time}</span>}
+      {time && /^\d{1,2}:\d{2}$/.test(time) && <span style={{ marginLeft: 8, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.gold, background: "rgba(200,160,96,0.1)", padding: "1px 6px", borderRadius: 3 }}>⏰ {time}</span>}
     </div>
     {onDelete && <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", opacity: 0.4, transition: "opacity 0.2s" }}
       onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0.4}>
@@ -559,24 +559,46 @@ export default function App() {
     setPaused(false); setRec(true);
   };
 
-  const onFinish = () => {
+  const onFinish = async () => {
     setPaused(false);
     setRec(false);
 
     // Stop speech recognition
     const sr = speechRec.current;
     if (sr) {
-      speechRec.current = null; // prevent auto-restart
+      speechRec.current = null;
       try { sr.stop(); } catch(e) {}
     }
 
-    // Get the transcript
-    const text = liveTranscript.current.trim();
-    if (text) {
-      setTranscript(text);
-    } else {
+    // Get the raw transcript from browser
+    const rawText = liveTranscript.current.trim();
+    if (!rawText) {
       setTranscript("");
+      setShowSave(true);
+      return;
     }
+
+    // AI correction step — fix misrecognized words
+    setTranscribing(true);
+    setTranscript(rawText); // show raw first
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'text_correct',
+          content: { text: rawText },
+          prompt: rawText,
+        }),
+      });
+      const data = await res.json();
+      if (data.result && data.result.trim()) {
+        setTranscript(data.result.trim());
+      }
+    } catch (e) {
+      // AI 纠错失败就用原文，不影响流程
+    }
+    setTranscribing(false);
     setShowSave(true);
   };
 
