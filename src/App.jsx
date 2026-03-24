@@ -289,54 +289,12 @@ const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onD
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(entry?.title || "");
   const [text, setText] = useState(entry?.text || "");
-  const fileInputRef = useRef(null);
 
   // sync if entry changes
   const entryTitle = entry?.title || "";
   const entryText = entry?.text || "";
-  const entryImg = entry?.img || null;
   if (!editing && title !== entryTitle) setTitle(entryTitle);
   if (!editing && text !== entryText) setText(entryText);
-
-  const handleAddImageClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('请选择图片文件');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result;
-      if (base64 && typeof base64 === 'string') {
-        onUpdate({ ...entry, img: base64 });
-      }
-    };
-    reader.onerror = () => {
-      alert('读取图片失败，请重试');
-    };
-    reader.readAsDataURL(file);
-
-    // Reset input so same file can be selected again
-    e.target.value = '';
-  };
-
-  const handleRemoveImage = () => {
-    if (confirm('确定删除图片？')) {
-      onUpdate({ ...entry, img: null });
-    }
-  };
-
-  const isBase64Image = (img) => {
-    return typeof img === 'string' && img.startsWith('data:');
-  };
 
   return (
     <div style={{ flex: 1, padding: "0 14px", display: "flex", flexDirection: "column" }}>
@@ -353,35 +311,8 @@ const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onD
             <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: C.dark, margin: 0 }}>{entry.title}</h3>
           )}
           {entry.img && (
-            <div style={{ width: "100%", height: 140, borderRadius: 8, overflow: "hidden", background: `linear-gradient(135deg, ${C.warm}, ${C.cream})`, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(0,0,0,0.06)", position: "relative" }}>
-              {isBase64Image(entry.img) ? (
-                <img src={entry.img} alt="日记图片" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                <div style={{ fontSize: 48 }}>{entry.img}</div>
-              )}
-              <button
-                onClick={handleRemoveImage}
-                style={{
-                  position: "absolute",
-                  top: 8,
-                  right: 8,
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  border: "none",
-                  background: "rgba(0,0,0,0.5)",
-                  color: "#fff",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 18,
-                  lineHeight: 1
-                }}
-                title="删除图片"
-              >
-                ×
-              </button>
+            <div style={{ width: "100%", height: 140, borderRadius: 8, overflow: "hidden", background: `linear-gradient(135deg, ${C.warm}, ${C.cream})`, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(0,0,0,0.06)" }}>
+              <div style={{ fontSize: 48 }}>{entry.img}</div>
             </div>
           )}
           {editing ? (
@@ -397,16 +328,9 @@ const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onD
               <button onClick={() => setEditing(true)} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke={C.brown} strokeWidth="2"/></svg>编辑
               </button>
-              <button onClick={handleAddImageClick} style={{ padding: "10px 16px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <button style={{ padding: "10px 16px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke={C.brown} strokeWidth="2"/><path d="M12 8v8M8 12h8" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>添加图片
               </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                onChange={handleFileChange}
-                style={{ display: "none" }}
-              />
               {onDelete && <button onClick={() => { if (confirm("确定删除这篇日记？")) { onDelete(); onBack(); } }} style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="#A03030" strokeWidth="1.8" strokeLinecap="round"/></svg>删除
               </button>}
@@ -559,41 +483,59 @@ export default function App() {
 
   const fm = s => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 
-  // Start real browser recording
+  // Convert audio blob to WAV (Tencent ASR needs wav/mp3, not webm)
+  const blobToWav = async (blob) => {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+    const arrayBuf = await blob.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuf);
+    const numChannels = 1;
+    const sampleRate = 16000;
+    const samples = audioBuffer.getChannelData(0);
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+    // WAV header
+    const writeStr = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+    writeStr(0, 'RIFF');
+    view.setUint32(4, 36 + samples.length * 2, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeStr(36, 'data');
+    view.setUint32(40, samples.length * 2, true);
+    for (let i = 0; i < samples.length; i++) {
+      const s = Math.max(-1, Math.min(1, samples[i]));
+      view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    }
+    audioCtx.close();
+    return new Blob([buffer], { type: 'audio/wav' });
+  };
+
+  // Start recording
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      // Detect Safari for compatibility
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-
-      // Safari only supports audio/mp4, other browsers support webm
-      let mimeType = 'audio/webm';
-      if (isSafari || !MediaRecorder.isTypeSupported('audio/webm')) {
-        if (MediaRecorder.isTypeSupported('audio/mp4')) {
-          mimeType = 'audio/mp4';
-        } else if (MediaRecorder.isTypeSupported('audio/aac')) {
-          mimeType = 'audio/aac';
-        } else {
-          // Fallback to default (browser will choose)
-          mimeType = '';
-        }
-      }
-
-      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '';
+      const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       audioChunks.current = [];
       mr.ondataavailable = e => { if (e.data.size > 0) audioChunks.current.push(e.data); };
-      mr.start(1000);
+      mr.start(500); // collect data every 500ms
       mediaRec.current = mr;
       setRec(true); setT(0); setTranscript("");
     } catch (e) {
-      console.error('Recording error:', e);
-      alert("无法访问麦克风，请允许录音权限");
+      alert("无法访问麦克风，请允许录音权限后重试");
     }
   };
 
   const onRed = () => {
-    if (!rec && !paused && !showSave) { startRecording(); }
+    if (!rec && !paused && !showSave && !transcribing) { startRecording(); }
     else if (rec) { mediaRec.current?.pause(); setRec(false); setPaused(true); }
   };
   const onResume = () => { mediaRec.current?.resume(); setPaused(false); setRec(true); };
@@ -602,46 +544,96 @@ export default function App() {
     setPaused(false);
     setTranscribing(true);
 
-    // 停止录音
-    if (mediaRec.current && mediaRec.current.state !== 'inactive') {
-      mediaRec.current.stop();
-      mediaRec.current.stream?.getTracks().forEach(t => t.stop());
+    // Properly stop MediaRecorder and wait for all data
+    const blob = await new Promise((resolve) => {
+      const mr = mediaRec.current;
+      if (!mr || mr.state === 'inactive') {
+        resolve(new Blob(audioChunks.current));
+        return;
+      }
+      mr.onstop = () => {
+        const mimeType = mr.mimeType || 'audio/webm';
+        resolve(new Blob(audioChunks.current, { type: mimeType }));
+      };
+      mr.stop();
+      mr.stream?.getTracks().forEach(t => t.stop());
+    });
+
+    // Check if we actually got audio data
+    if (blob.size < 1000) {
+      setTranscript("（录音时间太短，请重试）");
+      setTranscribing(false);
+      setShowSave(true);
+      return;
     }
 
-    // 等待录音数据
-    await new Promise(r => setTimeout(r, 300));
-
-    // 直接调用后端 ASR（移除 Web Speech API）
+    // Convert to WAV for Tencent ASR compatibility
+    let wavBlob;
     try {
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-      const mimeType = isSafari ? 'audio/mp4' : 'audio/webm';
-      const format = isSafari ? 'mp4' : 'webm';
-      const blob = new Blob(audioChunks.current, { type: mimeType });
+      wavBlob = await blobToWav(blob);
+    } catch (e) {
+      console.error('WAV conversion failed:', e);
+      setTranscript("（音频处理失败，可手动输入）");
+      setTranscribing(false);
+      setShowSave(true);
+      return;
+    }
 
-      const reader = new FileReader();
-      const base64 = await new Promise((resolve, reject) => {
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+    // Check WAV size (Tencent ASR limit ~10MB for one-shot)
+    if (wavBlob.size > 10 * 1024 * 1024) {
+      setTranscript("（录音时间过长，请控制在 60 秒以内）");
+      setTranscribing(false);
+      setShowSave(true);
+      return;
+    }
+
+    // Convert to base64
+    let base64;
+    try {
+      const arrayBuf = await wavBlob.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuf);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      base64 = btoa(binary);
+    } catch (e) {
+      setTranscript("（音频编码失败，可手动输入）");
+      setTranscribing(false);
+      setShowSave(true);
+      return;
+    }
+
+    // Call ASR with timeout
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 秒超时
 
       const res = await fetch('/api/asr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audio: base64, format }),
+        body: JSON.stringify({ audio: base64, format: 'wav' }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || `ASR failed: ${res.status}`);
+        const errData = await res.json().catch(() => ({}));
+        console.error('ASR API error:', res.status, errData);
+        setTranscript(`（语音识别服务异常：${errData.detail || res.status}，可手动输入）`);
+      } else {
+        const data = await res.json();
+        if (data.text && data.text.trim()) {
+          setTranscript(data.text.trim());
+        } else {
+          setTranscript("（未识别到语音内容，可手动输入）");
+        }
       }
-
-      const data = await res.json();
-      setTranscript(data.text || '');
     } catch (e) {
-      console.error('ASR error:', e);
-      setTranscript('');
-      alert('语音识别失败：' + e.message);
+      if (e.name === 'AbortError') {
+        setTranscript("（语音识别超时，可手动输入）");
+      } else {
+        console.error('ASR fetch error:', e);
+        setTranscript("（网络错误，请检查连接后重试）");
+      }
     }
 
     setTranscribing(false);
@@ -755,28 +747,12 @@ export default function App() {
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: C.warm, borderRadius: "20px 20px 0 0", padding: "28px 18px 24px", boxShadow: "0 -8px 30px rgba(0,0,0,0.12)", animation: "slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)", zIndex: 10 }}>
           <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: C.dark, marginBottom: 4, textAlign: "center" }}>保存到</div>
           <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: C.brown, marginBottom: 10, textAlign: "center" }}>{fm(t)}</div>
-          {/* Transcript preview / edit */}
-          <div style={{ padding: "8px 12px", marginBottom: 14, borderRadius: 6, background: "rgba(255,255,255,0.5)", border: "1px solid rgba(0,0,0,0.04)" }}>
-            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: C.gold, fontWeight: 600, marginBottom: 4 }}>{transcribing ? "识别中..." : (transcript ? "语音转写" : "手动输入")}</div>
-            <textarea
-              value={transcript}
-              onChange={e => setTranscript(e.target.value)}
-              placeholder={transcribing ? "语音识别中..." : "可在此编辑或输入内容..."}
-              disabled={transcribing}
-              style={{
-                width: "100%",
-                minHeight: 60,
-                maxHeight: 120,
-                border: "none",
-                background: "transparent",
-                resize: "vertical",
-                fontFamily: "'Lora',serif",
-                fontSize: 12,
-                color: C.dark,
-                lineHeight: 1.5,
-                outline: "none"
-              }}
-            />
+          {/* Transcript — editable textarea */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: C.gold, fontWeight: 600, marginBottom: 4 }}>语音转写（可编辑）</div>
+            <textarea value={transcript} onChange={e => setTranscript(e.target.value)}
+              placeholder="语音识别结果将显示在这里，也可以直接手动输入..."
+              style={{ width: "100%", minHeight: 60, maxHeight: 100, padding: "8px 10px", borderRadius: 6, border: "1px solid rgba(0,0,0,0.06)", background: "rgba(255,255,255,0.5)", fontFamily: "'Lora',serif", fontSize: 12, color: C.dark, lineHeight: 1.5, resize: "vertical", outline: "none" }} />
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
             {[{ icon: <BookIcon s={24} c="white" />, l: "日记", k: "diary", bg: C.brown }, { icon: <CheckIcon s={24} c="white" />, l: "待办", k: "todo", bg: C.teal }, { icon: <BulbIcon s={24} c="white" />, l: "灵感", k: "idea", bg: C.orange }, { icon: <MeetIcon s={24} c="white" />, l: "会议", k: "meeting", bg: "#6B5B73" }].map(x =>
