@@ -600,63 +600,24 @@ export default function App() {
 
   const onFinish = async () => {
     setPaused(false);
-    // Stop recording and get audio blob
+    setTranscribing(true);
+
+    // 停止录音
     if (mediaRec.current && mediaRec.current.state !== 'inactive') {
       mediaRec.current.stop();
       mediaRec.current.stream?.getTracks().forEach(t => t.stop());
     }
-    setTranscribing(true);
-    // Wait a tick for final data
+
+    // 等待录音数据
     await new Promise(r => setTimeout(r, 300));
 
-    // Detect Safari and use appropriate mime type
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const mimeType = isSafari ? 'audio/mp4' : 'audio/webm';
-    const blob = new Blob(audioChunks.current, { type: mimeType });
-
-    // Try Web Speech API first (works in Safari with fallback)
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      try {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'zh-CN';
-        recognition.continuous = true;
-        recognition.interimResults = false;
-
-        let transcriptText = '';
-        recognition.onresult = (event) => {
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            transcriptText += event.results[i][0].transcript;
-          }
-        };
-
-        recognition.onerror = (event) => {
-          console.log('Speech recognition error:', event.error);
-          // Fall through to backend ASR or manual input
-        };
-
-        recognition.onend = () => {
-          if (transcriptText) {
-            setTranscript(transcriptText);
-          } else {
-            setTranscript("（语音识别未返回结果，可手动输入）");
-          }
-          setTranscribing(false);
-          setShowSave(true);
-        };
-
-        // Start recognition - note: this requires microphone permission again
-        // For recorded audio, we need to use backend ASR
-        // So we'll skip this and use backend ASR or manual fallback
-        recognition.start();
-        return;
-      } catch (e) {
-        console.log('Web Speech API failed:', e);
-      }
-    }
-
-    // Backend ASR fallback
+    // 直接调用后端 ASR（移除 Web Speech API）
     try {
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      const mimeType = isSafari ? 'audio/mp4' : 'audio/webm';
+      const format = isSafari ? 'mp4' : 'webm';
+      const blob = new Blob(audioChunks.current, { type: mimeType });
+
       const reader = new FileReader();
       const base64 = await new Promise((resolve, reject) => {
         reader.onload = () => resolve(reader.result.split(',')[1]);
@@ -664,24 +625,25 @@ export default function App() {
         reader.readAsDataURL(blob);
       });
 
-      // Check if ASR endpoint is available
       const res = await fetch('/api/asr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audio: base64, format: isSafari ? 'mp4' : 'webm' }),
+        body: JSON.stringify({ audio: base64, format }),
       });
 
       if (!res.ok) {
-        throw new Error(`ASR endpoint returned ${res.status}`);
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `ASR failed: ${res.status}`);
       }
 
       const data = await res.json();
-      setTranscript(data.text || "（未识别到语音内容）");
+      setTranscript(data.text || '');
     } catch (e) {
       console.error('ASR error:', e);
-      // Graceful fallback - allow manual entry
-      setTranscript("");
+      setTranscript('');
+      alert('语音识别失败：' + e.message);
     }
+
     setTranscribing(false);
     setShowSave(true);
   };

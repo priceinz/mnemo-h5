@@ -67,7 +67,7 @@ export async function onRequestPost(context) {
   if (!secretId || !secretKey) {
     return new Response(
       JSON.stringify({ error: 'Tencent credentials not configured' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
     );
   }
 
@@ -77,17 +77,31 @@ export async function onRequestPost(context) {
     if (!audio) {
       return new Response(
         JSON.stringify({ error: 'No audio data provided' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
     // 腾讯云一句话识别 API
+    // 支持格式: pcm, wav, mp3, ogg-speex, ogg-opus, flac, silk, aac, m4a
     const service = 'asr';
     const action = 'SentenceRecognition';
+
+    // 将格式映射为腾讯云支持的格式
+    const formatMapping = {
+      'webm': 'mp3',    // webm 用 mp3 尝试识别
+      'mp4': 'm4a',     // mp4 音频用 m4a
+      'aac': 'aac',
+      'mp3': 'mp3',
+      'wav': 'wav',
+      'm4a': 'm4a',
+    };
+
+    const voiceFormat = formatMapping[format] || 'mp3';
+
     const payload = JSON.stringify({
       EngSerViceType: '16k_zh',
       SourceType: 1,
-      VoiceFormat: format || 'mp3',
+      VoiceFormat: voiceFormat,
       Data: audio,
       DataLen: audio.length,
     });
@@ -116,22 +130,23 @@ export async function onRequestPost(context) {
         JSON.stringify({
           error: 'ASR service error',
           detail: data.Response.Error.Message,
+          code: data.Response.Error.Code,
         }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
     const text = data.Response?.Result || '';
     return new Response(
       JSON.stringify({ text }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
     );
 
   } catch (error) {
     console.error('ASR handler error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
     );
   }
 }
