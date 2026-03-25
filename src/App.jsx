@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { COVER_TEMPLATES } from "./coverTemplates";
 
 const C = {
   bg: "#F0E2CB",
