@@ -112,7 +112,7 @@ const TP22Bar = ({ activeTab, onTab }) => {
 /* ================================================================
    REALISTIC CASSETTE TAPE — translucent case, visible reels, label
    ================================================================ */
-const CassetteTape = ({ month, yearLabel, color, onClick, coverImg, onDoubleClick, labelPos, labelShape }) => {
+const CassetteTape = ({ month, yearLabel, color, onClick, coverImg, onDoubleClick, labelPos, labelShape, labelFont }) => {
   const isBook = !!coverImg;
   const cases = {
     clear: { body: "linear-gradient(175deg, rgba(235,230,220,0.9), rgba(210,205,195,0.9))", shadow: "rgba(0,0,0,0.06)", reel: "rgba(0,0,0,0.08)", window: "rgba(0,0,0,0.04)", labelBg: "#FFFBF2", edge: "rgba(255,255,255,0.5)" },
@@ -130,40 +130,24 @@ const CassetteTape = ({ month, yearLabel, color, onClick, coverImg, onDoubleClic
     else { lastTap.current = now; setTimeout(() => { if (lastTap.current !== 0) { onClick?.(); lastTap.current = 0; } }, 360); }
   };
 
-  // === WAX SEAL BOOK MODE — leather cover + wax seal + twine ===
+  // === BOOK MODE — clean cover + spine + pages + month label ===
   if (isBook) return (
-    <button onClick={handleClick} style={{ width: 72, height: 110, padding: 0, border: "none", cursor: "pointer", flexShrink: 0, position: "relative", borderRadius: "2px 5px 5px 2px", overflow: "hidden", boxShadow: "3px 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.05)", transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s" }}
-      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-16px) rotate(-1.5deg)"; e.currentTarget.style.boxShadow = "5px 12px 28px rgba(0,0,0,0.3)"; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0) rotate(0deg)"; e.currentTarget.style.boxShadow = "3px 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.05)"; }}>
-      {/* Cover image as background */}
+    <button onClick={handleClick} style={{ width: 72, height: 110, padding: 0, border: "none", cursor: "pointer", flexShrink: 0, position: "relative", borderRadius: "2px 5px 5px 2px", overflow: "hidden", boxShadow: "3px 3px 12px rgba(0,0,0,0.22)", transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s", background: "#ddd" }}
+      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-16px) rotate(-1.5deg)"; e.currentTarget.style.boxShadow = "5px 10px 25px rgba(0,0,0,0.28)"; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0) rotate(0deg)"; e.currentTarget.style.boxShadow = "3px 3px 12px rgba(0,0,0,0.22)"; }}>
       <img src={coverImg} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-      {/* Leather texture overlay */}
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.06) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(0,0,0,0.08) 0%, transparent 50%)", zIndex: 1, pointerEvents: "none" }} />
-      {/* Book spine — embossed left edge */}
-      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 7, zIndex: 3, background: "linear-gradient(90deg, rgba(0,0,0,0.35), rgba(0,0,0,0.12) 40%, rgba(255,255,255,0.06) 70%, rgba(0,0,0,0.08))" }} />
-      {/* Page edges — right side */}
-      <div style={{ position: "absolute", right: 0, top: 4, bottom: 4, width: 3, zIndex: 3, background: "repeating-linear-gradient(180deg, #F0E8DA 0px, #F0E8DA 1px, #E0D8C8 1px, #E0D8C8 2px)", borderRadius: "0 2px 2px 0" }} />
-      {/* Twine — diagonal string across cover */}
-      <div style={{ position: "absolute", top: -2, left: 28, width: 1.5, height: 160, background: "linear-gradient(180deg, #8B7355, #A08868, #8B7355)", transform: "rotate(25deg)", transformOrigin: "top center", zIndex: 4, opacity: 0.7 }} />
-      <div style={{ position: "absolute", top: -2, left: 30, width: 1, height: 160, background: "rgba(255,255,255,0.15)", transform: "rotate(25deg)", transformOrigin: "top center", zIndex: 4 }} />
-      {/* Wax seal — centered */}
-      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 5, width: 34, height: 34, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {/* Outer seal ring — irregular edge */}
-        <div style={{ position: "absolute", inset: -3, borderRadius: "50%", background: "radial-gradient(circle at 40% 35%, #C43030, #9A1818 50%, #6A0E0E)", boxShadow: "0 2px 6px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.15), inset 0 -1px 2px rgba(0,0,0,0.3)" }}>
-          {/* Seal edge bumps — simulated with box-shadow */}
-          <div style={{ position: "absolute", inset: 0, borderRadius: "50%", boxShadow: "-2px 0 0 0 #A01818, 2px 0 0 0 #A01818, 0 -2px 0 0 #B02020, 0 2px 0 0 #A01818, -1px -2px 0 0 #B82525, 2px 1px 0 0 #901515, -2px 1px 0 0 #901515, 1px -2px 0 0 #B82525" }} />
-        </div>
-        {/* Inner seal — embossed letter/month */}
-        <div style={{ position: "relative", zIndex: 1, width: 26, height: 26, borderRadius: "50%", background: "radial-gradient(circle at 38% 35%, #D43838, #B02020 60%, #8A1515)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 1px 3px rgba(255,255,255,0.2), inset 0 -1px 2px rgba(0,0,0,0.3)" }}>
-          <span style={{ fontFamily: "Georgia, serif", fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.85)", textShadow: "0 -1px 1px rgba(0,0,0,0.3), 0 1px 1px rgba(255,200,200,0.15)", letterSpacing: "-0.5px" }}>{yearLabel}</span>
-        </div>
+      {/* Book spine */}
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 6, background: "linear-gradient(90deg, rgba(0,0,0,0.28), rgba(0,0,0,0.08), rgba(255,255,255,0.08))", zIndex: 2 }} />
+      {/* Page edges */}
+      <div style={{ position: "absolute", right: 0, top: 3, bottom: 3, width: 3, background: "repeating-linear-gradient(180deg, #f5f0e8 0px, #f5f0e8 1px, #e8e2d8 1px, #e8e2d8 2px)", borderRadius: "0 2px 2px 0", zIndex: 2 }} />
+      {/* Bottom shadow */}
+      <div style={{ position: "absolute", bottom: 0, left: 6, right: 3, height: 2, background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.12))", zIndex: 2 }} />
+      {/* Gloss */}
+      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.04) 100%)", zIndex: 3, pointerEvents: "none" }} />
+      {/* Month label */}
+      <div style={{ position: "absolute", left: `${(labelPos?.x || 50)}%`, top: `${(labelPos?.y || 85)}%`, transform: "translate(-50%, -50%)", zIndex: 4, pointerEvents: "none" }}>
+        <MonthLabel month={month} year={yearLabel} shape={labelShape || "default"} font={labelFont} dark={true} />
       </div>
-      {/* Month label — positioned by user */}
-      <div style={{ position: "absolute", left: `${(labelPos?.x || 50)}%`, top: `${(labelPos?.y || 82)}%`, transform: "translate(-50%, -50%)", zIndex: 6, pointerEvents: "none" }}>
-        <MonthLabel month={month} year={yearLabel} shape={labelShape || "default"} dark={true} style={{ fontSize: "0.7em" }} />
-      </div>
-      {/* Worn edge — top right corner fold hint */}
-      <div style={{ position: "absolute", top: 0, right: 3, width: 8, height: 8, background: "linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.08) 50%)", zIndex: 3 }} />
     </button>
   );
 
@@ -199,7 +183,7 @@ const ShelfRow = ({ year, tapes, onTap, tapCovers, onDoubleTap }) => (
       const cover = tapCovers?.[key];
       return <CassetteTape key={i} month={t.month} yearLabel={t.label} color={t.color}
         coverImg={cover?.img || cover?.drawing}
-        labelPos={cover?.labelPos} labelShape={cover?.labelShape}
+        labelPos={cover?.labelPos} labelShape={cover?.labelShape} labelFont={cover?.labelFont}
         onClick={() => onTap(t)}
         onDoubleClick={() => onDoubleTap?.({ year, month: t.month, label: t.label, color: t.color, key })}
       />;
@@ -331,10 +315,19 @@ const renderTemplate = (templateId, month, year, w = 300, h = 400) => {
 };
 
 // Render month label shape
-const MonthLabel = ({ month, year, shape, style: outerStyle, dark }) => {
+const LABEL_FONTS = [
+  { id: "caveat", name: "手写", family: "'Caveat',cursive" },
+  { id: "georgia", name: "衬线", family: "Georgia,'Songti SC',serif" },
+  { id: "mono", name: "等宽", family: "'Courier New',monospace" },
+  { id: "playfair", name: "标题", family: "'Playfair Display',serif" },
+  { id: "sans", name: "无衬线", family: "system-ui,sans-serif" },
+];
+
+const MonthLabel = ({ month, year, shape, font, style: outerStyle, dark }) => {
   const textC = dark ? "rgba(255,255,255,0.85)" : C.dark;
   const subC = dark ? "rgba(255,255,255,0.4)" : C.brown;
-  const base = { fontFamily: "'Caveat',cursive", textAlign: "center", pointerEvents: "none", ...outerStyle };
+  const ff = font || "'Caveat',cursive";
+  const base = { fontFamily: ff, textAlign: "center", pointerEvents: "none", ...outerStyle };
 
   if (shape === "pill") return (
     <div style={{ ...base, background: dark ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.7)", padding: "4px 14px", borderRadius: 20 }}>
@@ -375,7 +368,7 @@ const STICKERS = [
   "✈️","🏠","🎂","🎁","💌","📷","🎧","🌈","🦋","🐾","🍀","🌻","🍁","💎","⏰","🗺️","🎯","🏆","🧸","💫"
 ];
 
-const TapeCoverModal = ({ tapeInfo, coverImg, drawingImg, onClose, onSetCover, onSaveDrawing, labelPos, labelShape, onUpdateLabel }) => {
+const TapeCoverModal = ({ tapeInfo, coverImg, drawingImg, onClose, onSetCover, onSaveDrawing, labelPos, labelShape, labelFont, onUpdateLabel }) => {
   const canvasRef = useRef(null);
   const previewRef = useRef(null);
   const [tab, setTab] = useState("template");
@@ -385,8 +378,9 @@ const TapeCoverModal = ({ tapeInfo, coverImg, drawingImg, onClose, onSetCover, o
   const [stickerMode, setStickerMode] = useState(false);
   const [placedStickers, setPlacedStickers] = useState([]);
   const [selTemplate, setSelTemplate] = useState(null);
-  const [lPos, setLPos] = useState(labelPos || { x: 50, y: 82 });
+  const [lPos, setLPos] = useState(labelPos || { x: 50, y: 85 });
   const [lShape, setLShape] = useState(labelShape || "default");
+  const [lFont, setLFont] = useState(labelFont || "'Caveat',cursive");
   const [dragging, setDragging] = useState(false);
   const isDown = useRef(false);
   const lastPos = useRef(null);
@@ -443,20 +437,24 @@ const TapeCoverModal = ({ tapeInfo, coverImg, drawingImg, onClose, onSetCover, o
     const x = Math.max(10, Math.min(90, ((touch.clientX - r.left) / r.width) * 100));
     const y = Math.max(8, Math.min(95, ((touch.clientY - r.top) / r.height) * 100));
     setLPos({ x, y });
-    onUpdateLabel?.({ x, y }, lShape);
+    onUpdateLabel?.({ x, y }, lShape, lFont);
   };
 
   const applyTemplate = (tid) => {
     setSelTemplate(tid);
-    if (tid === "tape") { onSetCover(null); onSaveDrawing(null); onUpdateLabel?.({ x: 50, y: 82 }, "default"); return; }
+    if (tid === "tape") { onSetCover(null); onSaveDrawing(null); onUpdateLabel?.({ x: 50, y: 85 }, "default", "'Caveat',cursive"); return; }
     const img = renderTemplate(tid, tapeInfo.month, tapeInfo.year);
     onSetCover(img);
-    onUpdateLabel?.(lPos, lShape);
+    onUpdateLabel?.(lPos, lShape, lFont);
   };
 
   const updateShape = (s) => {
     setLShape(s);
-    onUpdateLabel?.(lPos, s);
+    onUpdateLabel?.(lPos, s, lFont);
+  };
+  const updateFont = (f) => {
+    setLFont(f);
+    onUpdateLabel?.(lPos, lShape, f);
   };
 
   if (!tapeInfo) return null;
@@ -503,7 +501,7 @@ const TapeCoverModal = ({ tapeInfo, coverImg, drawingImg, onClose, onSetCover, o
             {/* Draggable month label */}
             {previewImg && showLabel && (
               <div style={{ position: "absolute", left: `${lPos.x}%`, top: `${lPos.y}%`, transform: "translate(-50%, -50%)", zIndex: 4 }}>
-                <MonthLabel month={tapeInfo.month} year={tapeInfo.year} shape={lShape} dark={isDark || (tab === "photo")} />
+                <MonthLabel month={tapeInfo.month} year={tapeInfo.year} shape={lShape} font={lFont} dark={isDark || (tab === "photo")} />
               </div>
             )}
             <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.08), transparent 40%)", zIndex: 5, pointerEvents: "none" }} />
@@ -517,7 +515,7 @@ const TapeCoverModal = ({ tapeInfo, coverImg, drawingImg, onClose, onSetCover, o
 
         {/* Label shape selector */}
         {(tab === "template" || tab === "photo") && previewImg && (
-          <div style={{ display: "flex", gap: 4, justifyContent: "center", marginBottom: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 4, justifyContent: "center", marginBottom: 8, flexWrap: "wrap" }}>
             {LABEL_SHAPES.map(s => (
               <button key={s.id} onClick={() => updateShape(s.id)}
                 style={{ padding: "4px 10px", borderRadius: 4, border: "none", cursor: "pointer",
@@ -527,23 +525,41 @@ const TapeCoverModal = ({ tapeInfo, coverImg, drawingImg, onClose, onSetCover, o
             ))}
           </div>
         )}
+        {/* Label font selector */}
+        {(tab === "template" || tab === "photo") && previewImg && (
+          <div style={{ display: "flex", gap: 4, justifyContent: "center", marginBottom: 12, flexWrap: "wrap" }}>
+            {LABEL_FONTS.map(f => (
+              <button key={f.id} onClick={() => updateFont(f.family)}
+                style={{ padding: "4px 10px", borderRadius: 4, border: "none", cursor: "pointer",
+                  background: lFont === f.family ? C.teal : "rgba(0,0,0,0.04)",
+                  color: lFont === f.family ? "#fff" : C.brown,
+                  fontFamily: f.family, fontSize: 10, fontWeight: 600 }}>{f.name}</button>
+            ))}
+          </div>
+        )}
 
         {/* ===== TAB: TEMPLATE ===== */}
         {tab === "template" && (
           <div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 12 }}>
-              {COVER_TEMPLATES.map(t => (
+              {COVER_TEMPLATES.map(t => {
+                const thumbSrc = t.id !== "tape" ? renderTemplate(t.id, tapeInfo.month, tapeInfo.year, 90, 120) : null;
+                return (
                 <button key={t.id} onClick={() => applyTemplate(t.id)}
                   style={{ padding: 0, border: selTemplate === t.id ? `2px solid ${C.gold}` : "2px solid transparent", borderRadius: 4, cursor: "pointer", background: "none", overflow: "hidden" }}>
-                  <div style={{ width: "100%", aspectRatio: "3/4", borderRadius: 2, overflow: "hidden", position: "relative",
-                    background: t.id === "tape" ? C.cream : t.id === "pink_note" ? "#D4727A" : t.id === "dark_edit" ? "#3A3D45" : t.id === "collage" ? "#E8DCC8" : t.id === "bauhaus" ? "#F0EBE0" : t.id === "matchbox" ? "#4A8A50" : t.id === "dark_amber" ? "#2A1510" : "#E8E4DE" }}>
-                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontFamily: "'Caveat',cursive", fontSize: 9, color: ["dark_edit","dark_amber","matchbox"].includes(t.id) ? "rgba(255,255,255,0.6)" : C.brown }}>{t.id === "tape" ? "🎵" : ""}</span>
-                    </div>
+                  <div style={{ width: "100%", aspectRatio: "3/4", borderRadius: 2, overflow: "hidden", position: "relative", background: C.cream }}>
+                    {thumbSrc ? (
+                      <img src={thumbSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontSize: 16 }}>🎵</span>
+                      </div>
+                    )}
                   </div>
                   <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 8, color: C.brown, padding: "3px 0", textAlign: "center" }}>{t.name}</div>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -610,7 +626,7 @@ const TapeCoverModal = ({ tapeInfo, coverImg, drawingImg, onClose, onSetCover, o
 
         {/* Reset */}
         {(coverImg || drawingImg) && tab !== "draw" && (
-          <button onClick={() => { onSetCover(null); onSaveDrawing(null); onUpdateLabel?.({ x: 50, y: 82 }, "default"); }}
+          <button onClick={() => { onSetCover(null); onSaveDrawing(null); onUpdateLabel?.({ x: 50, y: 85 }, "default", "'Caveat',cursive"); }}
             style={{ width: "100%", marginTop: 10, padding: 8, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.04)", color: C.lbrown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10 }}>
             恢复为磁带样式
           </button>
@@ -1443,10 +1459,11 @@ export default function App() {
           drawingImg={tapCovers[tapeModal.key]?.drawing}
           labelPos={tapCovers[tapeModal.key]?.labelPos}
           labelShape={tapCovers[tapeModal.key]?.labelShape}
+          labelFont={tapCovers[tapeModal.key]?.labelFont}
           onClose={() => setTapeModal(null)}
           onSetCover={(img) => setTapCovers(prev => ({ ...prev, [tapeModal.key]: { ...(prev[tapeModal.key] || {}), img } }))}
           onSaveDrawing={(drawing) => setTapCovers(prev => ({ ...prev, [tapeModal.key]: { ...(prev[tapeModal.key] || {}), drawing } }))}
-          onUpdateLabel={(pos, shape) => setTapCovers(prev => ({ ...prev, [tapeModal.key]: { ...(prev[tapeModal.key] || {}), labelPos: pos, labelShape: shape } }))}
+          onUpdateLabel={(pos, shape, font) => setTapCovers(prev => ({ ...prev, [tapeModal.key]: { ...(prev[tapeModal.key] || {}), labelPos: pos, labelShape: shape, labelFont: font } }))}
         />}
       </div>;
     }
