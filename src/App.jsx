@@ -736,7 +736,7 @@ const Sticky = ({ text, date, color, rotation, selectable, selected, onSelect, o
   );
 };
 
-const TodoRow = ({ text, done, time, onToggle, onDelete, onEdit }) => {
+const TodoRow = ({ text, done, time, date, onToggle, onDelete, onEdit, onCalendar }) => {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(text);
   const save = () => { if (editText.trim() && onEdit) { onEdit(editText.trim()); } setEditing(false); };
@@ -753,6 +753,13 @@ const TodoRow = ({ text, done, time, onToggle, onDelete, onEdit }) => {
           <span style={{ fontFamily: "'Lora',serif", fontSize: 15, color: done ? C.lbrown : C.dark, textDecoration: done ? "line-through" : "none" }}>{text}</span>
           {time && /^\d{1,2}:\d{2}$/.test(time) && <span style={{ marginLeft: 8, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.gold, background: "rgba(200,160,96,0.1)", padding: "1px 6px", borderRadius: 3 }}>⏰ {time}</span>}
         </div>
+      )}
+      {/* Calendar export — only for items with time, not done */}
+      {!done && time && /^\d{1,2}:\d{2}$/.test(time) && onCalendar && (
+        <button onClick={e => { e.stopPropagation(); onCalendar(); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", opacity: 0.3, transition: "opacity 0.2s" }}
+          onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0.3}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="17" rx="2" stroke={C.teal} strokeWidth="1.8"/><path d="M3 9h18M8 2v4M16 2v4" stroke={C.teal} strokeWidth="1.8" strokeLinecap="round"/></svg>
+        </button>
       )}
       {/* Edit button */}
       {!editing && onEdit && <button onClick={e => { e.stopPropagation(); setEditText(text); setEditing(true); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", opacity: 0.3, transition: "opacity 0.2s" }}
@@ -1316,12 +1323,54 @@ export default function App() {
     reminderTimers.current.push(timerId);
   };
 
+  // Generate .ics calendar file and trigger download for iOS calendar
+  const downloadICS = (todos) => {
+    const items = todos.filter(t => t.time && /^\d{1,2}:\d{2}$/.test(t.time));
+    if (items.length === 0) return;
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const toICSDate = (date, time) => {
+      const [h, m] = time.split(':').map(Number);
+      const d = new Date(date + 'T00:00:00');
+      d.setHours(h, m, 0, 0);
+      return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+    };
+    const toICSEnd = (date, time) => {
+      const [h, m] = time.split(':').map(Number);
+      const d = new Date(date + 'T00:00:00');
+      d.setHours(h, m + 30, 0, 0); // default 30 min duration
+      return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+    };
+
+    let ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//MNEMO//Voice Diary//CN\r\nCALSCALE:GREGORIAN\r\n';
+    items.forEach((t, i) => {
+      ics += 'BEGIN:VEVENT\r\n';
+      ics += `DTSTART:${toICSDate(t.date, t.time)}\r\n`;
+      ics += `DTEND:${toICSEnd(t.date, t.time)}\r\n`;
+      ics += `SUMMARY:${t.text}\r\n`;
+      ics += `DESCRIPTION:MNEMO待办提醒\r\n`;
+      ics += `BEGIN:VALARM\r\nTRIGGER:-PT15M\r\nACTION:DISPLAY\r\nDESCRIPTION:${t.text} (${t.time})\r\nEND:VALARM\r\n`;
+      ics += `UID:mnemo-${Date.now()}-${i}@mnemo-h5.pages.dev\r\n`;
+      ics += 'END:VEVENT\r\n';
+    });
+    ics += 'END:VCALENDAR\r\n';
+
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mnemo-todo-${items[0].date}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const doSave = async (x) => {
     const now = new Date().toISOString().slice(0, 10);
     if (x === "diary" && transcript.trim()) {
       setDiaryEntries(prev => ({ ...prev, [now]: { title: transcript.trim().slice(0, 20), text: transcript.trim(), img: null } }));
     } else if (x === "todo" && transcript.trim()) {
-      // Use AI to intelligently extract todos — filter filler words, merge duplicates, extract time
       try {
         const res = await fetch('/api/ai', {
           method: 'POST',
@@ -1352,17 +1401,18 @@ export default function App() {
           const items = data.result.split('\n').map(s => s.trim()).filter(s => s && s.length > 1);
           const newTodos = items.map(line => {
             const parts = line.split('|').map(s => s.trim());
-            const text = parts[0].replace(/^[\d.、\-\s]+/, ''); // remove leading numbers
+            const text = parts[0].replace(/^[\d.、\-\s]+/, '');
             const time = parts[1] || "";
             return { text: text || line, done: false, date: now, time };
           });
           setTodos(prev => [...newTodos, ...prev]);
-          // Schedule reminders for todos with time
           newTodos.forEach(todo => {
             if (todo.time && todo.time.match(/^\d{1,2}:\d{2}$/)) {
               scheduleReminder(todo.text, todo.time, now);
             }
           });
+          // Auto-export to iOS calendar
+          downloadICS(newTodos);
         } else {
           setTodos(prev => [{ text: transcript.trim(), done: false, date: now, time: "" }, ...prev]);
         }
@@ -1658,7 +1708,7 @@ export default function App() {
         <SubHeader title="待办事项" search={searchTodo} setSearch={setSearchTodo} />
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.brown, letterSpacing: "0.1em", marginBottom: 10 }}>找到 {results.length} 条结果</div>
         {results.length === 0 && <div style={{ textAlign: "center", padding: 30, fontFamily: "'Caveat',cursive", fontSize: 16, color: C.lbrown }}>没有找到「{searchTodo}」相关的待办</div>}
-        {results.map((x, i) => <TodoRow key={i} text={x.text} done={x.done} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: !x.done }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} />)}
+        {results.map((x, i) => <TodoRow key={i} text={x.text} done={x.done} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: !x.done }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onCalendar={() => downloadICS([x])} />)}
       </div>;
     }
 
@@ -1676,9 +1726,9 @@ export default function App() {
         </div>
         {dayItems.length === 0 && <div style={{ textAlign: "center", padding: 30, fontFamily: "'Caveat',cursive", fontSize: 16, color: C.lbrown }}>这一天没有待办</div>}
         {dayItems.filter(x => !x.done).length > 0 && <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.brown, letterSpacing: "0.15em", marginBottom: 8 }}>待完成</div>}
-        {dayItems.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} />)}
+        {dayItems.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onCalendar={() => downloadICS([x])} />)}
         {dayItems.filter(x => x.done).length > 0 && <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.lbrown, letterSpacing: "0.15em", marginBottom: 8, marginTop: 12 }}>已完成</div>}
-        {dayItems.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} />)}
+        {dayItems.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onCalendar={() => downloadICS([x])} />)}
       </div>;
     }
 
@@ -1808,13 +1858,13 @@ export default function App() {
       {/* Pending */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.brown, letterSpacing: "0.15em", marginBottom: 8 }}>待完成 ({todos.filter(x => !x.done).length})</div>
-        {todos.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} />)}
+        {todos.filter(x => !x.done).map((x, i) => <TodoRow key={i} text={x.text} done={false} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: true }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onCalendar={() => downloadICS([x])} />)}
       </div>
 
       {/* Done */}
       <div>
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.lbrown, letterSpacing: "0.15em", marginBottom: 8 }}>已完成 ({todos.filter(x => x.done).length})</div>
-        {todos.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} />)}
+        {todos.filter(x => x.done).map((x, i) => <TodoRow key={i} text={x.text} done={true} time={x.time} onToggle={() => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, done: false }; setTodos(n); }} onEdit={(newText) => { const idx = todos.indexOf(x); const n = [...todos]; n[idx] = { ...x, text: newText }; setTodos(n); }} onDelete={() => { moveToTrash('todo', x); setTodos(todos.filter(t => t !== x)); }} onCalendar={() => downloadICS([x])} />)}
       </div>
     </div>;
   };
