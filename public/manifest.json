@@ -1,0 +1,21 @@
+{
+  "name": "MNEMO 语音日记",
+  "short_name": "MNEMO",
+  "description": "复古风格语音日记 · 待办 · 灵感 · 会议",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F0E2CB",
+  "theme_color": "#261201",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

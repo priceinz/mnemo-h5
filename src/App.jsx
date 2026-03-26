@@ -1247,15 +1247,29 @@ export default function App() {
     setShowSave(true);
   };
 
-  // === Reminder system ===
+  // === PWA Service Worker + Reminder system ===
+  const swRef = useRef(null);
   const reminderTimers = useRef([]);
 
-  // Request notification permission on first load
   useEffect(() => {
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        swRef.current = reg;
+        console.log('SW registered');
+        // Schedule all today's reminders via SW
+        if (reg.active) {
+          reg.active.postMessage({ type: 'SCHEDULE_ALL', data: { todos } });
+        }
+      }).catch(e => console.log('SW registration failed:', e));
+    }
+
+    // Request notification permission
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
-    // On load, reschedule reminders for today's todos with time
+
+    // Fallback: schedule reminders in-app too
     const today = new Date().toISOString().slice(0, 10);
     todos.filter(t => !t.done && t.date === today && t.time).forEach(t => {
       scheduleReminder(t.text, t.time, t.date);
@@ -1263,27 +1277,40 @@ export default function App() {
     return () => { reminderTimers.current.forEach(id => clearTimeout(id)); };
   }, []);
 
+  // Re-sync reminders to SW whenever todos change
+  useEffect(() => {
+    if (swRef.current?.active) {
+      swRef.current.active.postMessage({ type: 'SCHEDULE_ALL', data: { todos } });
+    }
+  }, [todos]);
+
   const scheduleReminder = (text, time, date) => {
     if (!time || !time.match(/^\d{1,2}:\d{2}$/)) return;
     const [h, m] = time.split(':').map(Number);
     const target = new Date(date + 'T00:00:00');
     target.setHours(h, m, 0, 0);
-    // Remind 10 minutes early
-    const remindAt = target.getTime() - 10 * 60 * 1000;
+    // Remind 15 minutes early
+    const remindAt = target.getTime() - 15 * 60 * 1000;
     const delay = remindAt - Date.now();
-    if (delay <= 0) return; // already past
+    if (delay <= 0) return;
 
+    // Also send to Service Worker for background notification
+    if (swRef.current?.active) {
+      swRef.current.active.postMessage({
+        type: 'SCHEDULE_REMINDER',
+        data: { id: `${text}-${time}`, text, time, date },
+      });
+    }
+
+    // In-app fallback timer (works when page is open)
     const timerId = setTimeout(() => {
-      // Browser notification
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('MNEMO 待办提醒', {
-          body: `⏰ 10分钟后：${text}（${time}）`,
-          icon: '📋',
+          body: `⏰ 15分钟后：${text}（${time}）`,
           tag: 'mnemo-reminder-' + time,
         });
       }
-      // Also show alert as fallback (works in WeChat browser)
-      alert(`⏰ 待办提醒\n\n${text}\n\n将在 10 分钟后开始（${time}）`);
+      alert(`⏰ 待办提醒\n\n${text}\n\n将在 15 分钟后开始（${time}）`);
     }, delay);
 
     reminderTimers.current.push(timerId);
