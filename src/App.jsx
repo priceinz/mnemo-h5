@@ -144,9 +144,11 @@ const CassetteTape = ({ month, yearLabel, color, onClick, coverImg, onDoubleClic
       <div style={{ position: "absolute", bottom: 0, left: 6, right: 3, height: 2, background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.12))", zIndex: 2 }} />
       {/* Gloss */}
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.04) 100%)", zIndex: 3, pointerEvents: "none" }} />
-      {/* Month label */}
-      <div style={{ position: "absolute", left: `${(labelPos?.x || 50)}%`, top: `${(labelPos?.y || 85)}%`, transform: "translate(-50%, -50%)", zIndex: 4, pointerEvents: "none" }}>
-        <MonthLabel month={month} year={yearLabel} shape={labelShape || "default"} font={labelFont} dark={true} />
+      {/* Month label — fixed bottom center, matching tape style */}
+      <div style={{ position: "absolute", bottom: 4, left: 0, right: 0, zIndex: 4, textAlign: "center", pointerEvents: "none" }}>
+        <span style={{ fontFamily: "'Caveat',cursive", fontSize: 11, color: "rgba(255,255,255,0.9)", textShadow: "0 1px 3px rgba(0,0,0,0.6)", lineHeight: 1 }}>{month}</span>
+        <br/>
+        <span style={{ fontFamily: "'Caveat',cursive", fontSize: 20, fontWeight: 600, color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.7)", lineHeight: 1 }}>{yearLabel}</span>
       </div>
     </button>
   );
@@ -850,15 +852,18 @@ const CalendarMonth = ({ year, month, monthLabel, entries, onBack, onDayClick })
    DIARY DETAIL VIEW — view / edit / add images
    ================================================================ */
 const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onDelete, imgInputRef, onImageUpload }) => {
-  const [editing, setEditing] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingText, setEditingText] = useState(false);
   const [title, setTitle] = useState(entry?.title || "");
   const [text, setText] = useState(entry?.text || "");
 
-  // sync if entry changes
   const entryTitle = entry?.title || "";
   const entryText = entry?.text || "";
-  if (!editing && title !== entryTitle) setTitle(entryTitle);
-  if (!editing && text !== entryText) setText(entryText);
+  if (!editingTitle && title !== entryTitle) setTitle(entryTitle);
+  if (!editingText && text !== entryText) setText(entryText);
+
+  const saveTitle = () => { onUpdate({ ...entry, title }); setEditingTitle(false); };
+  const saveText = () => { onUpdate({ ...entry, text }); setEditingText(false); };
 
   return (
     <div style={{ flex: 1, padding: "0 14px", display: "flex", flexDirection: "column" }}>
@@ -869,11 +874,19 @@ const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onD
       </div>
       {entry ? (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-          {editing ? (
-            <input value={title} onChange={e => setTitle(e.target.value)} style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: C.dark, background: "rgba(255,255,255,0.5)", border: `1px solid ${C.gold}`, borderRadius: 6, padding: "8px 10px", outline: "none" }} />
+          {/* Title — click to edit */}
+          {editingTitle ? (
+            <input value={title} onChange={e => setTitle(e.target.value)} autoFocus
+              onBlur={saveTitle} onKeyDown={e => { if (e.key === 'Enter') saveTitle(); }}
+              style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: C.dark, background: "rgba(255,255,255,0.5)", border: "none", borderBottom: `2px solid ${C.gold}`, borderRadius: 0, padding: "6px 2px", outline: "none" }} />
           ) : (
-            <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: C.dark, margin: 0 }}>{entry.title}</h3>
+            <h3 onClick={() => setEditingTitle(true)} style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: C.dark, margin: 0, cursor: "pointer", padding: "6px 2px", borderBottom: "1px dashed rgba(0,0,0,0.08)", transition: "border-color 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.borderBottomColor = C.gold}
+              onMouseLeave={e => e.currentTarget.style.borderBottomColor = "rgba(0,0,0,0.08)"}>
+              {entry.title || <span style={{ color: C.lbrown, fontWeight: 400, fontStyle: "italic" }}>点击添加标题...</span>}
+            </h3>
           )}
+          {/* Image */}
           {entry.img && (
             <div style={{ width: "100%", height: 160, borderRadius: 8, overflow: "hidden", border: "1px solid rgba(0,0,0,0.06)" }}>
               {entry.img.startsWith('data:') ? (
@@ -883,32 +896,39 @@ const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onD
               )}
             </div>
           )}
-          {editing ? (
-            <textarea value={text} onChange={e => setText(e.target.value)} style={{ fontFamily: "'Lora',serif", fontSize: 14, color: C.dark, lineHeight: 1.7, background: "rgba(255,255,255,0.5)", border: `1px solid ${C.gold}`, borderRadius: 6, padding: 10, outline: "none", flex: 1, resize: "none", minHeight: 120 }} />
+          {/* Text — click to edit */}
+          {editingText ? (
+            <textarea value={text} onChange={e => setText(e.target.value)} autoFocus
+              onBlur={saveText}
+              style={{ fontFamily: "'Lora',serif", fontSize: 14, color: C.dark, lineHeight: 1.7, background: "rgba(255,255,255,0.5)", border: "none", borderLeft: `2px solid ${C.gold}`, borderRadius: 0, padding: "8px 10px", outline: "none", flex: 1, resize: "none", minHeight: 120 }} />
           ) : (
-            <p style={{ fontFamily: "'Lora',serif", fontSize: 14, color: C.dark, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>{entry.text}</p>
+            <div onClick={() => setEditingText(true)} style={{ fontFamily: "'Lora',serif", fontSize: 14, color: C.dark, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap", cursor: "pointer", padding: "8px 10px", borderLeft: "2px solid transparent", minHeight: 80, transition: "border-color 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.borderLeftColor = C.gold}
+              onMouseLeave={e => e.currentTarget.style.borderLeftColor = "transparent"}>
+              {entry.text || <span style={{ color: C.lbrown, fontStyle: "italic" }}>点击开始写日记...</span>}
+            </div>
           )}
+          {/* Bottom buttons */}
           <div style={{ display: "flex", gap: 8, marginTop: "auto", paddingBottom: 8 }}>
-            {editing ? (<>
-              <button onClick={() => { onUpdate({ ...entry, title, text }); setEditing(false); }} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>保存</button>
-              <button onClick={() => { setTitle(entry.title); setText(entry.text); setEditing(false); }} style={{ padding: "10px 16px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.06)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>取消</button>
-            </>) : (<>
-              <button onClick={() => setEditing(true)} style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke={C.brown} strokeWidth="2"/></svg>编辑
-              </button>
-              <button onClick={() => imgInputRef?.current?.click()} style={{ padding: "10px 16px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke={C.brown} strokeWidth="2"/><path d="M12 8v8M8 12h8" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>添加图片
-              </button>
-              {onDelete && <button onClick={() => { if (confirm("确定删除这篇日记？")) { onDelete(); onBack(); } }} style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="#A03030" strokeWidth="1.8" strokeLinecap="round"/></svg>删除
-              </button>}
-            </>)}
+            {/* Export Word */}
+            <button onClick={() => exportToWord(`日记 — ${entry.title}`, `日期：${dateKey}\n标题：${entry.title}\n\n${entry.text}`, `日记_${dateKey}`)}
+              style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 3v12M12 15l-4-4M12 15l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>导出
+            </button>
+            {/* Add image */}
+            <button onClick={() => imgInputRef?.current?.click()} style={{ padding: "10px 16px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke={C.brown} strokeWidth="2"/><path d="M12 8v8M8 12h8" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>添加图片
+            </button>
+            {/* Delete */}
+            {onDelete && <button onClick={() => { if (confirm("确定删除这篇日记？")) { onDelete(); onBack(); } }} style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="#A03030" strokeWidth="1.8" strokeLinecap="round"/></svg>删除
+            </button>}
           </div>
         </div>
       ) : (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
           <div style={{ fontFamily: "'Caveat',cursive", fontSize: 16, color: C.lbrown }}>这一天还没有日记</div>
-          <button onClick={() => onUpdate({ title: "新的一天", text: "", img: null })} style={{ padding: "12px 24px", borderRadius: 8, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, boxShadow: "0 3px 10px rgba(200,160,96,0.3)" }}>开始写日记</button>
+          <button onClick={() => onUpdate({ title: "", text: "", img: null })} style={{ padding: "12px 24px", borderRadius: 8, border: "none", cursor: "pointer", background: C.gold, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, fontWeight: 600, boxShadow: "0 3px 10px rgba(200,160,96,0.3)" }}>开始写日记</button>
         </div>
       )}
     </div>
@@ -1032,6 +1052,7 @@ export default function App() {
   const [ideaAIMode, setIdeaAIMode] = useState(false);
   const [ideaAIPrompt, setIdeaAIPrompt] = useState("");
   const [ideaAIResult, setIdeaAIResult] = useState("");
+  const [newIdeaText, setNewIdeaText] = useState("");
 
   const [meetingDetail, setMeetingDetail] = useState(null);
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -1491,21 +1512,32 @@ export default function App() {
 
       {todayEntry ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: C.dark, margin: 0 }}>{todayEntry.title}</h3>
+          {/* Click title or text to go to detail page for editing */}
+          <h3 onClick={() => { setSelectedDay(dayNum); setSelectedDateKey(todayKey); setDv("detail"); const m = monthNames[todayDate.getMonth()]; setSm({ year: String(todayDate.getFullYear()), month: m }); }}
+            style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: C.dark, margin: 0, cursor: "pointer" }}>
+            {todayEntry.title || <span style={{ color: C.lbrown, fontWeight: 400, fontStyle: "italic" }}>点击添加标题...</span>}
+          </h3>
           {todayEntry.img && (
             <div style={{ width: "100%", height: 160, borderRadius: 8, overflow: "hidden", border: "1px solid rgba(0,0,0,0.06)" }}>
               <img src={todayEntry.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </div>
           )}
-          <p style={{ fontFamily: "'Lora',serif", fontSize: 14, color: C.dark, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>{todayEntry.text}</p>
+          <p onClick={() => { setSelectedDay(dayNum); setSelectedDateKey(todayKey); setDv("detail"); const m = monthNames[todayDate.getMonth()]; setSm({ year: String(todayDate.getFullYear()), month: m }); }}
+            style={{ fontFamily: "'Lora',serif", fontSize: 14, color: C.dark, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap", cursor: "pointer", minHeight: 60 }}>
+            {todayEntry.text || <span style={{ color: C.lbrown, fontStyle: "italic" }}>点击开始写日记...</span>}
+          </p>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button onClick={() => { setSelectedDay(dayNum); setSelectedDateKey(todayKey); setDv("detail"); const m = monthNames[todayDate.getMonth()]; setSm({ year: String(todayDate.getFullYear()), month: m }); }}
-              style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>
-              编辑
+            <button onClick={() => exportToWord(`日记 — ${todayEntry.title}`, `日期：${todayKey}\n标题：${todayEntry.title}\n\n${todayEntry.text}`, `日记_${todayKey}`)}
+              style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 3v12M12 15l-4-4M12 15l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>导出
             </button>
             <button onClick={() => imgInputRef.current?.click()}
-              style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>
-              添加图片
+              style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.05)", color: C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke={C.brown} strokeWidth="2"/><path d="M12 8v8M8 12h8" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>添加图片
+            </button>
+            <button onClick={() => { if (confirm("确定删除今日日记？")) { setDiaryEntries(prev => { const n = { ...prev }; delete n[todayKey]; return n; }); } }}
+              style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(180,40,40,0.08)", color: "#A03030", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="#A03030" strokeWidth="1.8" strokeLinecap="round"/></svg>删除
             </button>
           </div>
           <input ref={imgInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleImageUpload(e, todayKey)} />
@@ -1514,7 +1546,7 @@ export default function App() {
         <div style={{ textAlign: "center", padding: "40px 0" }}>
           <div style={{ fontFamily: "'Lora',serif", fontSize: 15, color: C.lbrown, marginBottom: 14 }}>今天还没有写日记</div>
           <button onClick={() => {
-            setDiaryEntries(prev => ({ ...prev, [todayKey]: { title: "今天的记录", text: "", img: null } }));
+            setDiaryEntries(prev => ({ ...prev, [todayKey]: { title: "", text: "", img: null } }));
             setSelectedDay(dayNum); setSelectedDateKey(todayKey); setDv("detail");
             const m = monthNames[todayDate.getMonth()]; setSm({ year: String(todayDate.getFullYear()), month: m });
           }}
@@ -1729,12 +1761,45 @@ export default function App() {
     return <div style={{ flex: 1, padding: "0 16px" }}>
       <SubHeader title="灵感墙" search={searchIdea} setSearch={setSearchIdea} />
       {q && filteredIdeas.length === 0 && <div style={{ textAlign: "center", padding: 30, fontFamily: "'Caveat',cursive", fontSize: 16, color: C.lbrown }}>没有找到「{searchIdea}」相关的灵感</div>}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
         <button onClick={() => { setIdeaAIMode(!ideaAIMode); setIdeaSelected([]); setIdeaAIResult(""); setIdeaAIPrompt(""); }}
           style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 20, border: "none", cursor: "pointer", background: ideaAIMode ? C.orange : "rgba(0,0,0,0.06)", color: ideaAIMode ? "#fff" : C.brown, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, fontWeight: 600, transition: "all 0.2s" }}>
           <AIIcon s={12} c={ideaAIMode ? "#fff" : C.orange} />{ideaAIMode ? "退出 AI" : "AI 合成"}
         </button>
       </div>
+      {/* Add new idea */}
+      {!ideaAIMode && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+          <input value={newIdeaText} onChange={e => setNewIdeaText(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && newIdeaText.trim()) {
+                const now = new Date();
+                const colors = ["#FFF9C4","#FFE0B2","#C8E6C9","#BBDEFB","#F8BBD0","#E1BEE7","#B2DFDB","#FFCCBC"];
+                const rots = [-2, 1.5, -1, 2, -1.5, 1, -2, 1.5];
+                const idx = allIdeas.length % colors.length;
+                const dateStr = `${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+                const monthStr = now.toISOString().slice(0, 7);
+                setAllIdeas(prev => [{ text: newIdeaText.trim(), date: dateStr, month: monthStr, color: colors[idx], rotation: rots[idx] }, ...prev]);
+                setNewIdeaText("");
+              }
+            }}
+            placeholder="记录一个灵感..."
+            style={{ flex: 1, padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(0,0,0,0.06)", background: "rgba(255,255,255,0.5)", outline: "none", fontFamily: "Georgia,'Songti SC',serif", fontSize: 13, fontStyle: "italic", color: C.dark }} />
+          <button onClick={() => {
+            if (newIdeaText.trim()) {
+              const now = new Date();
+              const colors = ["#FFF9C4","#FFE0B2","#C8E6C9","#BBDEFB","#F8BBD0","#E1BEE7","#B2DFDB","#FFCCBC"];
+              const rots = [-2, 1.5, -1, 2, -1.5, 1, -2, 1.5];
+              const idx = allIdeas.length % colors.length;
+              const dateStr = `${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+              const monthStr = now.toISOString().slice(0, 7);
+              setAllIdeas(prev => [{ text: newIdeaText.trim(), date: dateStr, month: monthStr, color: colors[idx], rotation: rots[idx] }, ...prev]);
+              setNewIdeaText("");
+            }
+          }}
+            style={{ padding: "10px 14px", borderRadius: 6, border: "none", cursor: "pointer", background: C.orange, color: "#fff", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600 }}>+</button>
+        </div>
+      )}
       {sortedMonths.map(month => (
         <div key={month} style={{ marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
