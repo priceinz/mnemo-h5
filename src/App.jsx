@@ -88,7 +88,7 @@ const RedButton = ({ active, onClick }) => {
 /* ================================================================
    TP-22 BOTTOM BAR — 4 tabs
    ================================================================ */
-const TP22Bar = ({ activeTab, onTab }) => {
+const TP22Bar = ({ activeTab, onTab, onHelp }) => {
   const tabs = [
     { key: "diary", label: "日记" },
     { key: "todo", label: "待办" },
@@ -96,7 +96,7 @@ const TP22Bar = ({ activeTab, onTab }) => {
     { key: "meeting", label: "会议" },
   ];
   return (
-    <div style={{ height: 72, flexShrink: 0, background: `linear-gradient(180deg, ${C.metalLt}, ${C.metal}, ${C.metalDk})`, borderTop: "1px solid rgba(255,255,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "0 18px", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)" }}>
+    <div style={{ height: 72, flexShrink: 0, background: `linear-gradient(180deg, ${C.metalLt}, ${C.metal}, ${C.metalDk})`, borderTop: "1px solid rgba(255,255,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "0 14px", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)" }}>
       {tabs.map(t => {
         const isOn = activeTab === t.key;
         return (
@@ -105,6 +105,9 @@ const TP22Bar = ({ activeTab, onTab }) => {
           </button>
         );
       })}
+      <button onClick={onHelp} style={{ width: 28, height: 28, borderRadius: "50%", border: "none", cursor: "pointer", background: "rgba(0,0,0,0.08)", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: 2 }}>
+        <span style={{ fontFamily: "Georgia,serif", fontSize: 13, fontWeight: 700, color: "#6A6460" }}>?</span>
+      </button>
     </div>
   );
 };
@@ -1036,6 +1039,7 @@ const exportToWord = (title, content, filename) => {
    ================================================================ */
 export default function App() {
   const [tab, setTab] = useState("record");
+  const [showGuide, setShowGuide] = useState(false);
   const [rec, setRec] = useState(false);
   const [paused, setPaused] = useState(false);
   const [showSave, setShowSave] = useState(false);
@@ -2180,7 +2184,78 @@ export default function App() {
         {tab === "idea" && pgIdea()}
         {tab === "meeting" && pgMeeting()}
       </div>
-      <TP22Bar activeTab={tab} onTab={handleTab} />
+      <TP22Bar activeTab={tab} onTab={handleTab} onHelp={() => setShowGuide(true)} />
+      {/* Guide overlay */}
+      {showGuide && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn 0.2s" }}
+          onClick={e => { if (e.target === e.currentTarget) setShowGuide(false); }}>
+          <div style={{ width: "100%", maxWidth: 430, maxHeight: "85vh", background: C.warm, borderRadius: "20px 20px 0 0", padding: "20px 20px 30px", overflowY: "auto", animation: "slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 700, color: C.dark, margin: 0 }}>MNEMO 使用指南</h2>
+              <button onClick={() => setShowGuide(false)} style={{ background: "rgba(0,0,0,0.06)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+
+            {[
+              { icon: "🎙️", title: "录音", items: [
+                "点击中央红色按钮开始录音",
+                "录音时实时显示语音转写预览",
+                "录完后通义 AI 高精度识别替换",
+                "识别结果可手动编辑修改",
+                "选择保存到：日记 / 待办 / 灵感 / 会议",
+              ]},
+              { icon: "📖", title: "日记", items: [
+                "首页显示今日日记，点击标题或正文跳转编辑",
+                "有录音的日记可点击「回听录音」播放原声",
+                "书架 → 只显示有日记的月份（磁带样式）",
+                "双击磁带 → 自定义封面（模板/图片/手绘）",
+                "月历左右滑动切换月份",
+                "支持导出 Word 文档",
+              ]},
+              { icon: "✅", title: "待办", items: [
+                "语音添加自动提取多条待办和时间",
+                "有时间的待办自动导出 .ics 日历文件",
+                "iOS 日历提前 15 分钟推送提醒（锁屏可收到）",
+                "点击 ✏️ 编辑，✕ 删除，📅 手动导出日历",
+                "按日期查看 → 月热力图日历",
+              ]},
+              { icon: "💡", title: "灵感", items: [
+                "便签墙按月分组，撕纸+胶带复古风格",
+                "顶部输入框可直接手动添加灵感",
+                "点击 AI 合成 → 多选便签 → 智谱 AI 整合分析",
+                "每条便签可编辑和删除",
+              ]},
+              { icon: "🎤", title: "会议", items: [
+                "≥5 分钟自动使用长录音识别（支持 2 小时）",
+                "支持说话人分离（自动区分说话人 1、2...）",
+                "智谱 AI 一键生成会议纪要",
+                "纪要可导出 Word 文档",
+              ]},
+              { icon: "⚙️", title: "其他", items: [
+                "所有数据存储在手机本地（localStorage）",
+                "添加到主屏幕可作为独立 App 使用",
+              ]},
+            ].map((sec, i) => (
+              <div key={i} style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                  <span style={{ fontSize: 16 }}>{sec.icon}</span>
+                  <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 15, fontWeight: 600, color: C.dark }}>{sec.title}</span>
+                </div>
+                {sec.items.map((item, j) => (
+                  <div key={j} style={{ fontFamily: "'Lora',serif", fontSize: 12, color: C.brown, lineHeight: 1.6, paddingLeft: 24, position: "relative" }}>
+                    <span style={{ position: "absolute", left: 10, color: C.gold }}>·</span>{item}
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            <div style={{ textAlign: "center", marginTop: 12, fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: C.lbrown }}>
+              MNEMO v1.0 · 复古语音日记
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
