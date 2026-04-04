@@ -863,6 +863,8 @@ const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onD
   const [editingText, setEditingText] = useState(false);
   const [title, setTitle] = useState(entry?.title || "");
   const [text, setText] = useState(entry?.text || "");
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef(null);
 
   const entryTitle = entry?.title || "";
   const entryText = entry?.text || "";
@@ -872,6 +874,21 @@ const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onD
   const saveTitle = () => { onUpdate({ ...entry, title }); setEditingTitle(false); };
   const saveText = () => { onUpdate({ ...entry, text }); setEditingText(false); };
 
+  const togglePlay = () => {
+    if (!entry?.audio) return;
+    if (playing) {
+      audioRef.current?.pause();
+      setPlaying(false);
+    } else {
+      if (!audioRef.current) {
+        audioRef.current = new Audio(entry.audio);
+        audioRef.current.onended = () => setPlaying(false);
+      }
+      audioRef.current.play();
+      setPlaying(true);
+    }
+  };
+
   return (
     <div style={{ flex: 1, padding: "0 14px", display: "flex", flexDirection: "column" }}>
       <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: C.brown, padding: "8px 0", textAlign: "left" }}>← 返回月历</button>
@@ -879,6 +896,22 @@ const DiaryDetail = ({ dayNum, dateKey, monthLabel, entry, onBack, onUpdate, onD
         <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 42, fontWeight: 700, color: C.dark, lineHeight: 1 }}>{dayNum}</span>
         <span style={{ fontFamily: "'Caveat',cursive", fontSize: 16, color: C.brown }}>{monthLabel}</span>
       </div>
+      {/* Audio playback bar */}
+      {entry?.audio && (
+        <button onClick={togglePlay} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", marginBottom: 10, borderRadius: 6, border: "none", cursor: "pointer", background: playing ? "rgba(200,160,96,0.15)" : "rgba(0,0,0,0.04)", transition: "all 0.2s" }}>
+          <div style={{ width: 28, height: 28, borderRadius: "50%", background: playing ? C.gold : C.brown, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            {playing ? (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+            )}
+          </div>
+          <div>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, fontWeight: 600, color: playing ? C.gold : C.brown }}>{playing ? "播放中..." : "回听录音"}</div>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 8, color: C.lbrown }}>语音原声</div>
+          </div>
+        </button>
+      )}
       {entry ? (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
           {/* Title — click to edit */}
@@ -1084,6 +1117,7 @@ export default function App() {
   const liveTranscript = useRef("");
   const mediaRecorder = useRef(null);
   const audioChunks = useRef([]);
+  const lastAudioData = useRef(null); // store base64 audio for diary playback
 
   const startRecording = async () => {
     try {
@@ -1176,6 +1210,17 @@ export default function App() {
     if (mr?.stream) { mr.stream.getTracks().forEach(tk => tk.stop()); }
     const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
     mediaRecorder.current = null;
+
+    // Save audio as base64 for diary playback
+    if (audioBlob.size > 1000) {
+      try {
+        const reader = new FileReader();
+        reader.onloadend = () => { lastAudioData.current = reader.result; };
+        reader.readAsDataURL(audioBlob);
+      } catch(e) { lastAudioData.current = null; }
+    } else {
+      lastAudioData.current = null;
+    }
 
     if (audioBlob.size < 1000) {
       // Too small, use browser text
@@ -1369,7 +1414,7 @@ export default function App() {
   const doSave = async (x) => {
     const now = new Date().toISOString().slice(0, 10);
     if (x === "diary" && transcript.trim()) {
-      setDiaryEntries(prev => ({ ...prev, [now]: { title: transcript.trim().slice(0, 20), text: transcript.trim(), img: null } }));
+      setDiaryEntries(prev => ({ ...prev, [now]: { title: transcript.trim().slice(0, 20), text: transcript.trim(), img: null, audio: lastAudioData.current } }));
     } else if (x === "todo" && transcript.trim()) {
       try {
         const res = await fetch('/api/ai', {
@@ -1431,7 +1476,7 @@ export default function App() {
     }
     setShowSave(false); setT(0); setTranscript(""); setTab(x);
   };
-  const rst = () => { setRec(false); setPaused(false); setShowSave(false); setT(0); setTranscript(""); setTranscribing(false); if (speechRec.current) { try { speechRec.current.stop(); } catch(e){} speechRec.current = null; } if (mediaRecorder.current) { try { mediaRecorder.current.stop(); mediaRecorder.current.stream?.getTracks().forEach(t => t.stop()); } catch(e){} mediaRecorder.current = null; } audioChunks.current = []; liveTranscript.current = ""; };
+  const rst = () => { setRec(false); setPaused(false); setShowSave(false); setT(0); setTranscript(""); setTranscribing(false); if (speechRec.current) { try { speechRec.current.stop(); } catch(e){} speechRec.current = null; } if (mediaRecorder.current) { try { mediaRecorder.current.stop(); mediaRecorder.current.stream?.getTracks().forEach(t => t.stop()); } catch(e){} mediaRecorder.current = null; } audioChunks.current = []; liveTranscript.current = ""; lastAudioData.current = null; };
   const handleTab = (key) => setTab(key);
   const goHome = () => { setTab("record"); rst(); setDv("today"); setSm(null); setSelectedDay(null); setSelectedDateKey(null); };
   const GS = 250;
