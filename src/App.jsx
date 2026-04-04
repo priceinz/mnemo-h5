@@ -1257,14 +1257,7 @@ export default function App() {
               setTranscript(pollData.text);
               break;
             } else if (pollData.status === 'failed') {
-              // Fallback to browser text + AI correction
-              if (rawText) {
-                try {
-                  const corrRes = await fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'text_correct', content: { text: rawText }, prompt: rawText }) });
-                  const corrData = await corrRes.json();
-                  if (corrData.result?.trim()) setTranscript(corrData.result.trim());
-                } catch(e) {}
-              }
+              // Fallback to browser text directly
               break;
             }
             // Update progress message
@@ -1281,14 +1274,8 @@ export default function App() {
         const data = await res.json();
         if (data.text && data.text.trim()) {
           setTranscript(data.text.trim());
-        } else if (rawText) {
-          // DashScope failed, fallback to browser text + AI correction
-          try {
-            const corrRes = await fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'text_correct', content: { text: rawText }, prompt: rawText }) });
-            const corrData = await corrRes.json();
-            if (corrData.result?.trim()) setTranscript(corrData.result.trim());
-          } catch(e) {}
         }
+        // DashScope failed → rawText already shown as preview
       }
     } catch (e) {
       // Network error, keep browser text
@@ -1638,10 +1625,24 @@ export default function App() {
 
     // Level: Shelf
     if (dv === "shelf") {
-      const shelves = [
-        { y: "2026", t: [{ label: "Mar", month: "三月", color: "clear" }, { label: "Feb", month: "二月", color: "smoke" }, { label: "Jan", month: "一月", color: "amber" }] },
-        { y: "2025", t: [{ label: "Dec", month: "十二月", color: "dark" }, { label: "Nov", month: "十一月", color: "olive" }, { label: "Oct", month: "十月", color: "clear" }, { label: "Sep", month: "九月", color: "smoke" }, { label: "Aug", month: "八月", color: "amber" }] },
-      ];
+      // Dynamic tape generation from current month backwards
+      const zhMonths = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
+      const enLabels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const tapeColors = ["clear","smoke","amber","olive","dark","clear","smoke","amber","olive","dark","clear","smoke"];
+      const now = new Date();
+      const curYear = now.getFullYear();
+      const curMonth = now.getMonth(); // 0-based
+      const shelfMap = {};
+      // Generate 18 months back from current
+      for (let i = 0; i < 18; i++) {
+        let m = curMonth - i;
+        let y = curYear;
+        while (m < 0) { m += 12; y--; }
+        const yr = String(y);
+        if (!shelfMap[yr]) shelfMap[yr] = [];
+        shelfMap[yr].push({ label: enLabels[m], month: zhMonths[m], color: tapeColors[m] });
+      }
+      const shelves = Object.keys(shelfMap).sort((a, b) => b - a).map(y => ({ y, t: shelfMap[y] }));
       const q = searchDiary.toLowerCase();
       const filtered = q ? shelves.map(s => ({ ...s, t: s.t.filter(t => t.month.includes(q) || t.label.toLowerCase().includes(q) || s.y.includes(q)) })).filter(s => s.t.length > 0) : shelves;
       return <div style={{ flex: 1, padding: "0 12px" }}>
@@ -1694,6 +1695,22 @@ export default function App() {
 
       {todayEntry ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Audio playback */}
+          {todayEntry.audio && (
+            <button onClick={() => {
+              const aud = document.getElementById('today-audio');
+              if (aud) { if (aud.paused) aud.play(); else aud.pause(); }
+              else { const a = new Audio(todayEntry.audio); a.id = 'today-audio-el'; a.play(); }
+            }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(0,0,0,0.04)" }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: C.brown, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+              <div>
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, fontWeight: 600, color: C.brown }}>回听录音</div>
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 8, color: C.lbrown }}>语音原声</div>
+              </div>
+            </button>
+          )}
           {/* Click title or text to go to detail page for editing */}
           <h3 onClick={() => { setSelectedDay(dayNum); setSelectedDateKey(todayKey); setDv("detail"); const m = monthNames[todayDate.getMonth()]; setSm({ year: String(todayDate.getFullYear()), month: m }); }}
             style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: C.dark, margin: 0, cursor: "pointer" }}>
