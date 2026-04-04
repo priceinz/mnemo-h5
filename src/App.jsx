@@ -778,7 +778,7 @@ const TodoRow = ({ text, done, time, date, onToggle, onDelete, onEdit, onCalenda
 /* ================================================================
    CALENDAR MONTH VIEW — grid layout, no sidebar
    ================================================================ */
-const CalendarMonth = ({ year, month, monthLabel, entries, onBack, onDayClick }) => {
+const CalendarMonth = ({ year, month, monthLabel, entries, onBack, onDayClick, onPrev, onNext }) => {
   const yr = parseInt(year);
   const mo = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"].indexOf(month);
   const enNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -794,14 +794,34 @@ const CalendarMonth = ({ year, month, monthLabel, entries, onBack, onDayClick })
   const isCurrentMonth = today.getFullYear() === yr && today.getMonth() === mo;
   const todayDate = isCurrentMonth ? today.getDate() : -1;
 
+  // Swipe handling
+  const touchStart = useRef(null);
+  const handleTouchStart = (e) => { touchStart.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e) => {
+    if (touchStart.current === null) return;
+    const diff = e.changedTouches[0].clientX - touchStart.current;
+    if (diff > 60) onPrev?.(); // swipe right → prev month
+    else if (diff < -60) onNext?.(); // swipe left → next month
+    touchStart.current = null;
+  };
+
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "0 4px" }}>
-      {/* Back + Month header */}
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "0 4px" }}
+      onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      {/* Back + Month header with arrows */}
       <div style={{ display: "flex", alignItems: "center", padding: "2px 8px 6px" }}>
         <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: C.brown, padding: "4px 0" }}>← 书架</button>
-        <div style={{ flex: 1, textAlign: "center" }}>
-          <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 700, fontStyle: "italic", color: C.dark }}>{enNames[mo] || month}</span>
-          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.lbrown, marginLeft: 8 }}>{year}</span>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <button onClick={onPrev} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>
+          </button>
+          <div style={{ textAlign: "center" }}>
+            <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 700, fontStyle: "italic", color: C.dark }}>{enNames[mo] || month}</span>
+            <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: C.lbrown, marginLeft: 8 }}>{year}</span>
+          </div>
+          <button onClick={onNext} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke={C.brown} strokeWidth="2" strokeLinecap="round"/></svg>
+          </button>
         </div>
         <div style={{ width: 40 }} />
       </div>
@@ -1616,32 +1636,46 @@ export default function App() {
 
     // Level: Calendar month
     if (dv === "month" && sm) {
+      const zhMonths = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
+      const goMonth = (dir) => {
+        const mi = zhMonths.indexOf(sm.month);
+        let newMi = mi + dir;
+        let newYr = parseInt(sm.year);
+        if (newMi < 0) { newMi = 11; newYr--; }
+        if (newMi > 11) { newMi = 0; newYr++; }
+        setSm({ year: String(newYr), month: zhMonths[newMi] });
+      };
       return <CalendarMonth year={sm.year} month={sm.month} monthLabel={`${sm.year}年${sm.month}`}
         entries={diaryEntries}
         onBack={() => { setDv("shelf"); setSm(null); }}
         onDayClick={(day, key) => { setSelectedDay(day); setSelectedDateKey(key); setDv("detail"); }}
+        onPrev={() => goMonth(-1)}
+        onNext={() => goMonth(1)}
       />;
     }
 
     // Level: Shelf
     if (dv === "shelf") {
-      // Dynamic tape generation from current month backwards
       const zhMonths = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
       const enLabels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
       const tapeColors = ["clear","smoke","amber","olive","dark","clear","smoke","amber","olive","dark","clear","smoke"];
+      // Only show months that have diary entries
+      const entryMonths = new Set();
+      Object.keys(diaryEntries).forEach(key => {
+        if (diaryEntries[key]?.title || diaryEntries[key]?.text) {
+          entryMonths.add(key.slice(0, 7)); // "YYYY-MM"
+        }
+      });
+      // Also add current month so user can always access it
       const now = new Date();
-      const curYear = now.getFullYear();
-      const curMonth = now.getMonth(); // 0-based
+      entryMonths.add(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
       const shelfMap = {};
-      // Generate 18 months back from current
-      for (let i = 0; i < 18; i++) {
-        let m = curMonth - i;
-        let y = curYear;
-        while (m < 0) { m += 12; y--; }
-        const yr = String(y);
-        if (!shelfMap[yr]) shelfMap[yr] = [];
-        shelfMap[yr].push({ label: enLabels[m], month: zhMonths[m], color: tapeColors[m] });
-      }
+      Array.from(entryMonths).sort().reverse().forEach(ym => {
+        const [y, m] = ym.split('-');
+        const mi = parseInt(m) - 1;
+        if (!shelfMap[y]) shelfMap[y] = [];
+        shelfMap[y].push({ label: enLabels[mi], month: zhMonths[mi], color: tapeColors[mi] });
+      });
       const shelves = Object.keys(shelfMap).sort((a, b) => b - a).map(y => ({ y, t: shelfMap[y] }));
       const q = searchDiary.toLowerCase();
       const filtered = q ? shelves.map(s => ({ ...s, t: s.t.filter(t => t.month.includes(q) || t.label.toLowerCase().includes(q) || s.y.includes(q)) })).filter(s => s.t.length > 0) : shelves;
