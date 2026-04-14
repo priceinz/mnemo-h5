@@ -1136,58 +1136,19 @@ export default function App() {
 
   const fm = s => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 
-  // Use browser's speech recognition for live preview + MediaRecorder to capture audio
-  const speechRec = useRef(null);
-  const liveTranscript = useRef("");
+  // Pure MediaRecorder + DashScope — no browser speech recognition
   const mediaRecorder = useRef(null);
   const audioChunks = useRef([]);
-  const lastAudioData = useRef(null); // store base64 audio for diary playback
+  const lastAudioData = useRef(null);
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      // Start MediaRecorder to capture actual audio
       audioChunks.current = [];
       const mr = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm' });
       mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.current.push(e.data); };
-      mr.start(1000); // collect chunks every second
+      mr.start(1000);
       mediaRecorder.current = mr;
-
-      // Start browser speech recognition for live preview
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const sr = new SpeechRecognition();
-        sr.lang = 'zh-CN';
-        sr.continuous = true;
-        sr.interimResults = true;
-        sr.maxAlternatives = 1;
-        liveTranscript.current = "";
-
-        sr.onresult = (event) => {
-          let final = "", interim = "";
-          for (let i = 0; i < event.results.length; i++) {
-            if (event.results[i].isFinal) {
-              final += event.results[i][0].transcript;
-            } else {
-              interim += event.results[i][0].transcript;
-            }
-          }
-          liveTranscript.current = final + interim;
-        };
-
-        sr.onerror = (e) => { console.log('Speech recognition error:', e.error); };
-
-        sr.onend = () => {
-          if (speechRec.current && (rec || paused)) {
-            try { speechRec.current.start(); } catch(e) {}
-          }
-        };
-
-        sr.start();
-        speechRec.current = sr;
-      }
-
       setRec(true); setT(0); setTranscript("");
     } catch (e) {
       alert("无法访问麦克风，请允许录音权限后重试");
@@ -1197,18 +1158,12 @@ export default function App() {
   const onRed = () => {
     if (!rec && !paused && !showSave && !transcribing) { startRecording(); }
     else if (rec) {
-      // Pause: stop speech recognition + pause MediaRecorder
-      try { speechRec.current?.stop(); } catch(e) {}
       try { mediaRecorder.current?.pause(); } catch(e) {}
       setRec(false); setPaused(true);
     }
   };
 
   const onResume = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition && speechRec.current) {
-      try { speechRec.current.start(); } catch(e) {}
-    }
     try { mediaRecorder.current?.resume(); } catch(e) {}
     setPaused(false); setRec(true);
   };
@@ -1216,17 +1171,10 @@ export default function App() {
   const onFinish = async () => {
     setPaused(false);
     setRec(false);
-
-    // Stop speech recognition
-    const sr = speechRec.current;
-    if (sr) { speechRec.current = null; try { sr.stop(); } catch(e) {} }
-
-    // Show browser transcript as preview
-    const rawText = liveTranscript.current.trim();
-    setTranscript(rawText || "正在识别...");
+    setTranscript("正在识别...");
     setTranscribing(true);
 
-    // Stop MediaRecorder and get audio blob
+    // Stop MediaRecorder
     const mr = mediaRecorder.current;
     if (mr && mr.state !== 'inactive') {
       await new Promise(resolve => { mr.onstop = resolve; mr.stop(); });
@@ -1235,77 +1183,65 @@ export default function App() {
     const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
     mediaRecorder.current = null;
 
-    // Save audio as base64 for diary playback
+    // Save audio for diary playback
     if (audioBlob.size > 1000) {
       try {
         const reader = new FileReader();
         reader.onloadend = () => { lastAudioData.current = reader.result; };
         reader.readAsDataURL(audioBlob);
       } catch(e) { lastAudioData.current = null; }
-    } else {
-      lastAudioData.current = null;
-    }
+    } else { lastAudioData.current = null; }
 
+    // Too short
     if (audioBlob.size < 1000) {
-      // Too small, use browser text
-      if (!rawText) setTranscript("");
+      setTranscript("");
       setTranscribing(false);
       setShowSave(true);
       return;
     }
 
-    const isLong = t >= 300; // 5 minutes or longer → use async long API
+    // Send to DashScope
+    const isLong = t >= 300;
+    let finalText = "";
 
     try {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
 
       if (isLong) {
-        // Long recording: submit to async API, poll from frontend
-        setTranscript(rawText || "会议录音识别中，请稍候...");
-        const submitRes = await fetch('/api/asr-long', { method: 'POST', body: formData });
-        const submitData = await submitRes.json();
-
-        if (submitData.task_id) {
-          // Poll every 5 seconds
-          for (let i = 0; i < 120; i++) { // max 10 minutes
-            await new Promise(r => setTimeout(r, 5000));
-            const pollRes = await fetch('/api/asr-long', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'poll', task_id: submitData.task_id }),
-            });
-            const pollData = await pollRes.json();
-
-            if (pollData.status === 'completed' && pollData.text) {
-              setTranscript(pollData.text);
-              break;
-            } else if (pollData.status === 'failed') {
-              // Fallback to browser text directly
-              break;
+        // Long recording → async submit + poll
+        setTranscript("会议录音识别中...");
+        try {
+          const submitRes = await fetch('/api/asr-long', { method: 'POST', body: formData });
+          const submitData = await submitRes.json();
+          if (submitData.task_id) {
+            for (let i = 0; i < 120; i++) {
+              await new Promise(r => setTimeout(r, 5000));
+              try {
+                const pollRes = await fetch('/api/asr-long', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'poll', task_id: submitData.task_id }),
+                });
+                const pollData = await pollRes.json();
+                if (pollData.status === 'completed' && pollData.text) { finalText = pollData.text; break; }
+                if (pollData.status === 'failed') break;
+              } catch(e) { break; }
+              setTranscript(`⏳ 会议录音识别中... (${Math.floor((i*5)/60)}分${(i*5)%60}秒)`);
             }
-            // Update progress message
-            const mins = Math.floor((i * 5) / 60);
-            const secs = (i * 5) % 60;
-            setTranscript(rawText ? `${rawText}\n\n⏳ 高精度识别中 ${mins}:${String(secs).padStart(2, '0')}...` : `⏳ 会议录音识别中 ${mins}:${String(secs).padStart(2, '0')}...`);
           }
-        } else if (rawText) {
-          setTranscript(rawText);
-        }
+        } catch(e) {}
       } else {
-        // Short recording: send to short API (synchronous within worker)
-        const res = await fetch('/api/asr-short', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (data.text && data.text.trim()) {
-          setTranscript(data.text.trim());
-        }
-        // DashScope failed → rawText already shown as preview
+        // Short recording → synchronous
+        try {
+          const res = await fetch('/api/asr-short', { method: 'POST', body: formData });
+          const data = await res.json();
+          if (data.text && data.text.trim()) { finalText = data.text.trim(); }
+        } catch(e) {}
       }
-    } catch (e) {
-      // Network error, keep browser text
-      if (!rawText) setTranscript("");
-    }
+    } catch(e) {}
 
+    setTranscript(finalText || "");
     setTranscribing(false);
     setShowSave(true);
   };
@@ -1487,7 +1423,7 @@ export default function App() {
     }
     setShowSave(false); setT(0); setTranscript(""); setTab(x);
   };
-  const rst = () => { setRec(false); setPaused(false); setShowSave(false); setT(0); setTranscript(""); setTranscribing(false); if (speechRec.current) { try { speechRec.current.stop(); } catch(e){} speechRec.current = null; } if (mediaRecorder.current) { try { mediaRecorder.current.stop(); mediaRecorder.current.stream?.getTracks().forEach(t => t.stop()); } catch(e){} mediaRecorder.current = null; } audioChunks.current = []; liveTranscript.current = ""; lastAudioData.current = null; };
+  const rst = () => { setRec(false); setPaused(false); setShowSave(false); setT(0); setTranscript(""); setTranscribing(false); if (mediaRecorder.current) { try { mediaRecorder.current.stop(); mediaRecorder.current.stream?.getTracks().forEach(t => t.stop()); } catch(e){} mediaRecorder.current = null; } audioChunks.current = []; lastAudioData.current = null; };
   const handleTab = (key) => setTab(key);
   const goHome = () => { setTab("record"); rst(); setDv("today"); setSm(null); setSelectedDay(null); setSelectedDateKey(null); };
   const GS = 250;
