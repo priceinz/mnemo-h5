@@ -1,4 +1,5 @@
-// functions/api/asr-short.js — 通义语音识别（短录音：日记/待办/灵感）
+// functions/api/asr-short.js — 通义语音识别（短录音）
+// 只用同步接口，不轮询，避免 Cloudflare 30秒超时
 
 export async function onRequestPost(context) {
   const headers = {
@@ -8,99 +9,43 @@ export async function onRequestPost(context) {
 
   const apiKey = context.env.DASHSCOPE_API_KEY;
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'DASHSCOPE_API_KEY not configured' }), { status: 500, headers });
+    return new Response(JSON.stringify({ error: 'DASHSCOPE_API_KEY 未配置' }), { status: 500, headers });
   }
 
   try {
     const formData = await context.request.formData();
     const audioFile = formData.get('audio');
     if (!audioFile) {
-      return new Response(JSON.stringify({ error: 'No audio file' }), { status: 400, headers });
+      return new Response(JSON.stringify({ error: '没有音频文件' }), { status: 400, headers });
     }
 
-    // Approach 1: Try OpenAI-compatible whisper endpoint (simplest)
-    const whisperForm = new FormData();
-    whisperForm.append('file', audioFile, audioFile.name || 'audio.webm');
-    whisperForm.append('model', 'paraformer-v2');
-    whisperForm.append('language', 'zh');
+    // 用 OpenAI 兼容的同步接口（最快最稳定）
+    const wForm = new FormData();
+    wForm.append('file', audioFile, audioFile.name || 'audio.webm');
+    wForm.append('model', 'sensevoice-v1');
 
-    let text = '';
-
-    const whisperRes = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/audio/transcriptions', {
+    const res = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/audio/transcriptions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}` },
-      body: whisperForm,
+      body: wForm,
     });
 
-    if (whisperRes.ok) {
-      const whisperData = await whisperRes.json();
-      text = whisperData?.text || '';
+    if (!res.ok) {
+      const errText = await res.text();
+      return new Response(JSON.stringify({
+        error: `DashScope 返回 ${res.status}`,
+        detail: errText.slice(0, 200),
+      }), { status: res.status, headers });
     }
 
-    // Approach 2: Fallback to native async transcription API
+    const data = await res.json();
+    const text = data?.text?.trim() || '';
+
     if (!text) {
-      // Upload file first
-      const uploadForm = new FormData();
-      uploadForm.append('file', audioFile, audioFile.name || 'audio.webm');
-      uploadForm.append('purpose', 'file-extract');
-
-      const uploadRes = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/files', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${apiKey}` },
-        body: uploadForm,
-      });
-
-      if (uploadRes.ok) {
-        const uploadData = await uploadRes.json();
-        const fileId = uploadData?.id;
-
-        if (fileId) {
-          // Submit transcription task
-          const taskRes = await fetch('https://dashscope.aliyuncs.com/api/v1/services/audio/asr/transcription', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiKey}`,
-              'X-DashScope-Async': 'enable',
-            },
-            body: JSON.stringify({
-              model: 'paraformer-v2',
-              input: { file_urls: [`dashscope://file/${fileId}`] },
-              parameters: { language_hints: ['zh'] },
-            }),
-          });
-
-          if (taskRes.ok) {
-            const taskData = await taskRes.json();
-            const taskId = taskData?.output?.task_id;
-
-            // Poll for result (short audio finishes fast, ~5-10s)
-            if (taskId) {
-              for (let i = 0; i < 20; i++) {
-                await new Promise(r => setTimeout(r, 1500));
-                const pollRes = await fetch(`https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`, {
-                  headers: { 'Authorization': `Bearer ${apiKey}` },
-                });
-                if (!pollRes.ok) continue;
-                const pollData = await pollRes.json();
-                const status = pollData?.output?.task_status;
-
-                if (status === 'SUCCEEDED') {
-                  const resultUrl = pollData?.output?.results?.[0]?.transcription_url;
-                  if (resultUrl) {
-                    const transRes = await fetch(resultUrl);
-                    const transData = await transRes.json();
-                    const sentences = transData?.transcripts?.[0]?.sentences || [];
-                    text = sentences.map(s => s.text).join('') || transData?.transcripts?.[0]?.text || '';
-                  }
-                  break;
-                }
-                if (status === 'FAILED') break;
-              }
-            }
-          }
-        }
-      }
+      return new Response(JSON.stringify({
+        error: '识别结果为空',
+        detail: JSON.stringify(data).slice(0, 200),
+      }), { status: 200, headers });
     }
 
     return new Response(JSON.stringify({ text }), { status: 200, headers });

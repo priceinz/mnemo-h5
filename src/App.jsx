@@ -1232,12 +1232,25 @@ export default function App() {
           }
         } catch(e) {}
       } else {
-        // Short recording → synchronous
+        // Short recording → send to DashScope
+        setTranscript("正在识别...");
         try {
           const res = await fetch('/api/asr-short', { method: 'POST', body: formData });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            setTranscript(`识别服务异常 (${res.status}): ${errData.error || errData.detail || '请检查API Key'}\n\n可手动输入内容`);
+            setTranscribing(false); setShowSave(true); return;
+          }
           const data = await res.json();
           if (data.text && data.text.trim()) { finalText = data.text.trim(); }
-        } catch(e) {}
+          else if (data.error) {
+            setTranscript(`识别失败: ${data.error}\n${data.detail || ''}\n\n可手动输入内容`);
+            setTranscribing(false); setShowSave(true); return;
+          }
+        } catch(e) {
+          setTranscript(`网络错误: ${e.message}\n\n可手动输入内容`);
+          setTranscribing(false); setShowSave(true); return;
+        }
       }
     } catch(e) {}
 
