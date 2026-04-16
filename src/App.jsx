@@ -1232,18 +1232,35 @@ export default function App() {
           }
         } catch(e) {}
       } else {
-        // Short recording → send to DashScope
+        // Short recording → submit to DashScope, poll for result
         setTranscript("正在识别...");
         try {
           const res = await fetch('/api/asr-short', { method: 'POST', body: formData });
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            setTranscript(`识别服务异常 (${res.status}): ${errData.error || errData.detail || '请检查API Key'}\n\n可手动输入内容`);
-            setTranscribing(false); setShowSave(true); return;
-          }
           const data = await res.json();
-          if (data.text && data.text.trim()) { finalText = data.text.trim(); }
-          else if (data.error) {
+
+          if (data.text && data.text.trim()) {
+            // Synchronous result (unlikely with new Worker but handle it)
+            finalText = data.text.trim();
+          } else if (data.task_id) {
+            // Async mode: poll every 2 seconds
+            for (let i = 0; i < 30; i++) {
+              await new Promise(r => setTimeout(r, 2000));
+              try {
+                const pollRes = await fetch('/api/asr-short', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ task_id: data.task_id }),
+                });
+                const pollData = await pollRes.json();
+                if (pollData.status === 'done' && pollData.text) { finalText = pollData.text; break; }
+                if (pollData.status === 'failed') {
+                  setTranscript(`识别失败: ${pollData.error || '未知错误'}\n\n可手动输入内容`);
+                  setTranscribing(false); setShowSave(true); return;
+                }
+              } catch(e) { break; }
+              setTranscript(`正在识别... (${(i+1)*2}秒)`);
+            }
+          } else if (data.error) {
             setTranscript(`识别失败: ${data.error}\n${data.detail || ''}\n\n可手动输入内容`);
             setTranscribing(false); setShowSave(true); return;
           }
